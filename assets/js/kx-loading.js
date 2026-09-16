@@ -45,16 +45,16 @@
     fade: 0, // giây — mờ chồng giữa hai ảnh; 0 = nhảy cắt
     shuffle: false, // true = nhảy lung tung thay vì theo thứ tự khai
     // Khai thêm `shot9` … là chạy, hàm quét tới shot16.
-    shot1: '/assets/media/08---Mu-i.png',
-    shot2: '/assets/media/07---Ngu--a--hehe.png',
-    shot3: '/assets/media/06-woman-02-111.png',
-    shot4: '/assets/media/234261.png',
-    shot5: '/assets/media/05---Thi-n-Poster.png',
-    shot6: '/assets/media/10---Ga-.png',
-    shot7: '/assets/media/06--Ra--n-Poster.png',
-    shot8: '/assets/media/001---TV-XU-A.png',
+    shot1: 'assets/media/08---Mu-i.png',
+    shot2: 'assets/media/07---Ngu--a--hehe.png',
+    shot3: 'assets/media/06-woman-02-111.png',
+    shot4: 'assets/media/234261.png',
+    shot5: 'assets/media/05---Thi-n-Poster.png',
+    shot6: 'assets/media/10---Ga-.png',
+    shot7: 'assets/media/06--Ra--n-Poster.png',
+    shot8: 'assets/media/001---TV-XU-A.png',
 
-    still: '/assets/media/Avt.png', // ảnh phải, đứng yên
+    still: 'assets/media/Avt.png', // ảnh phải, đứng yên
 
     // -------------------------------------------------- số phần trăm góc dưới
     pct: true,

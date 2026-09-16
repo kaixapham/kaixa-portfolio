@@ -101,7 +101,10 @@ createServer((req, res) => {
       } catch (e) {
         return reply(500, { ok: false, error: 'không ghi được: ' + e.message })
       }
-      reply(200, { ok: true, path: '/' + UPLOAD_DIR + '/' + name, bytes: size })
+      // Đường dẫn TƯƠNG ĐỐI, không có dấu / đầu. Có dấu / đầu là nó neo vào gốc
+      // tên miền, mà bản công khai chạy dưới thư mục con
+      // (kaixapham.github.io/kaixa-portfolio/) nên ảnh 404 sạch. Đây từng là lỗi thật.
+      reply(200, { ok: true, path: UPLOAD_DIR + '/' + name, bytes: size })
     })
     return
   }
