@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>(Hello, Mate) — kaixa</title>
+  <meta name="description" content="Trang liên hệ có trình phát nhạc: nhập file từ máy, spectrum chạy theo nhạc, hai đĩa xoay.">
+  <meta name="theme-color" content="#040203">
+  <link rel="icon" href="assets/img/logo-kaixa.svg" type="image/svg+xml">
+
+  <!-- Font nạp trước cho khỏi nháy chữ -->
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/GeistMono-500-latin.woff2" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/PPEditorialNew-Thin.woff2" crossorigin>
+
+  <style>
+    /* Chỉ đủ để trang không nháy trắng trước khi module dựng xong.
+       Toàn bộ phần nhìn nằm trong assets/js/kx-hello-mate.js */
+    html, body { margin: 0; padding: 0; height: 100%; background: #040203; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <!-- Module tự tìm phần tử này để gắn vào; không có thì nó tự tạo trong body. -->
+  <div data-hello-mate></div>
+
+  <!-- Hiệu ứng. Mỗi file tự chạy, mọi tham số nằm trong CONFIG ở đầu file.
+       THỨ TỰ NẠP CÓ Ý NGHĨA: kx-hello-mate.js dựng ra DOM, các file sau đi tìm
+       những phần tử do nó tạo (.hm-disc, .hm-mono, .hm-disp). -->
+  <script src="assets/js/kx-hello-mate.js"></script>
+  <!-- Bóp méo vành đĩa khi rê chuột. -->
+  <script src="assets/js/kx-disc-fx.js"></script>
+  <!-- Con trỏ có đuôi ruy-băng. -->
+  <script src="assets/js/kx-tail-cursor.js"></script>
+  <!-- Xáo kí tự cho chữ Geist Mono lúc trang vừa hiện. -->
+  <script src="assets/js/kx-shuffle-text.js"></script>
+  <!-- Thanh khối quét ngang để lộ chữ PP Editorial, ảnh poster và ô PLAY/MUTE. -->
+  <script src="assets/js/kx-block-reveal.js"></script>
+  <!-- Lửa. Mặc định TẮT — bật trong bảng tinh chỉnh để xem thử. -->
+  <script src="assets/js/kx-blaze.js"></script>
+  <!-- Đốt cháy ảnh poster và hai đĩa. Nạp SAU kx-disc-fx.js: lúc đốt nó phải
+       giấu luôn canvas mà file kia dựng ra. Mặc định TẮT. -->
+  <script src="assets/js/kx-burn-image.js"></script>
+  <!-- Lửa liếm dọc mép đĩa và mép ảnh. Bật cái này là màn đốt ở trên chạy
+       trước một lượt. Mặc định TẮT. -->
+  <script src="assets/js/kx-fire-edge.js"></script>
+  <!-- Nút BURNING MODE — một nút châm cả ba cơ chế lửa ở trên theo thứ tự.
+       Nạp SAU cả ba. Trang mở ra là KHÔNG có lửa; phải bấm nút mới cháy. -->
+  <script src="assets/js/kx-burning-mode.js"></script>
+  <!-- Chuyển màn bằng lưới pixel — màn loading gọi tới lúc bàn giao cho trang
+       contact. Dựng theo boilerplate của Osmo nhưng KHÔNG dùng Barba/GSAP/Lenis
+       (xem đầu file). -->
+  <script src="assets/js/kx-page-transition.js"></script>
+  <!-- Màn loading: lớp phủ kín trang lúc mới vào (hai nhãn, hai ảnh, cột chữ
+       chạy). Nạp SAU kx-hello-mate.js — nó CLONE cột chữ mà file kia dựng ra. -->
+  <script src="assets/js/kx-loading.js"></script>
+  <!-- Màn mở đầu: vào trang là đã ở chế độ burning, rồi đốt NGƯỢC về bộ ảnh
+       mặc định trong lúc chữ chạy hiệu ứng. Nạp SAU kx-burning-mode.js. -->
+  <script src="assets/js/kx-burning-open.js"></script>
+
+</body>
+</html>
