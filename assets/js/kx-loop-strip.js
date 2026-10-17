@@ -125,6 +125,14 @@
   // Lộ `config` NGAY khi file chạy: kx-panel.js (nạp sau) áp số đã lưu trước boot.
   var api = (window.KX_LOOP_STRIP = { config: S, defaults: Object.freeze(Object.assign({}, CONFIG)) })
 
+  /* Màn đầu Home cao ĐÚNG MỘT viewport (generator: `hero` 1080) — mọi thứ dưới
+   * nó dời theo 100svh. stripY / headerY vẫn khai bằng toạ độ trang của bản
+   * thiết kế; quy sang CSS bằng hàm này. */
+  var HERO = 1080
+  function yTrang(y) {
+    return y >= HERO ? 'calc(100svh + ' + (y - HERO) + ' * var(--px))' : px(y)
+  }
+
   var W0 = 3400 // bề rộng khung xoay (px thiết kế) — đủ phủ góc màn hình khi nghiêng
   var LABEL_FONT = '"Geist Mono", ui-monospace, monospace'
 
@@ -157,7 +165,7 @@
     var mask = 'linear-gradient(to right,transparent var(--kx-ls-l),#000 var(--kx-ls-l),#000 calc(100% - var(--kx-ls-l)),transparent calc(100% - var(--kx-ls-l)))'
     return [
       // .kx-ls cao đúng vùng dải (không còn cao 0) để mask-image của kính ăn đúng.
-      '.kx-page .kx-ls{position:absolute;left:0;width:100%;top:' + px(S.stripY - H / 2) + ';height:' + px(H) + ';pointer-events:none}',
+      '.kx-page .kx-ls{position:absolute;left:0;width:100%;top:' + yTrang(S.stripY - H / 2) + ';height:' + px(H) + ';pointer-events:none}',
       '.kx-page .kx-ls.is-kinh{-webkit-mask-image:' + mask + ';mask-image:' + mask + '}',
       '.kx-page .kx-ls__xoay{position:absolute;left:50%;top:50%;width:' + px(W0) + ';',
       '  transform:translate(-50%,-50%) rotate(' + S.tilt + 'deg)}',
@@ -204,7 +212,7 @@
 
   function dungDau() {
     var d = el('div', 'kx-ls-dau')
-    d.style.top = px(S.headerY)
+    d.style.top = yTrang(S.headerY)
     // Khối cuối mỗi cụm trải tới trước cụm kế tiếp, để chữ dài không bị cắt.
     d.appendChild(cot(el('div', null, S.name), S.colName, S.colStatus - S.colName))
     d.appendChild(cot(el('div', null, S.status), S.colStatus, S.colServices - S.colStatus))
@@ -567,11 +575,16 @@
       var cssW = page.getBoundingClientRect().width
       K.k = cssW / 1920
       var H = caoVung()
-      K.top = (S.stripY - H / 2) * K.k
       var cssH = H * K.k
       K.ratio = Math.min(window.devicePixelRatio || 1, 2, S.lensMaxPx / Math.max(1, cssW, cssH))
-      cv.style.top = px(S.stripY - H / 2)
+      cv.style.top = yTrang(S.stripY - H / 2)
       cv.style.height = px(H)
+      // Đỉnh canvas trong trang (px css) — ĐO, không suy từ stripY: màn đầu
+      // cao theo viewport nên toạ độ thật lệch bản thiết kế 100svh - 1080.
+      // Đo khối dải (luôn hiện), không đo canvas — canvas để display:none tới
+      // khi atlas xong thì hộp của nó bằng 0.
+      K.top = dai.getBoundingClientRect().top - page.getBoundingClientRect().top
+      K.tamY = K.top / K.k + H / 2 // tâm dải, px thiết kế theo layout thật
       cv.width = Math.max(1, Math.round(cssW * K.ratio))
       cv.height = Math.max(1, Math.round(cssH * K.ratio))
       gl.viewport(0, 0, cv.width, cv.height)
@@ -685,7 +698,7 @@
       gl.uniform1f(U2.uP, S.cardW + S.gap)
       gl.uniform1f(U2.uW0, W0)
       gl.uniform1f(U2.uOff, off)
-      gl.uniform2f(U2.uC, 960, S.stripY)
+      gl.uniform2f(U2.uC, 960, K.tamY)
       gl.uniform2f(U2.uRot, Math.cos(r), Math.sin(r))
       gl.uniform1f(U2.uK, K.k)
       gl.uniform1f(U2.uScroll, window.scrollY)
