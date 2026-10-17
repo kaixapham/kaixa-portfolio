@@ -12,9 +12,9 @@
  *         qua nhiều cụm là mỗi cụm sáng trọn rồi tắt dần lệch nhịp nhau: thành
  *         SÓNG nối đuôi con trỏ.
  *
- * ẢNH — mỗi dự án một lớp ảnh chồng trong khung ảnh gốc, LAN RA TỪ GÓC
- * DƯỚI-TRÁI (clip-path tròn nở ra) khi vào, thu về góc đó khi rời; lớp mới
- * nhất nằm trên. Rời hết thì lộ ảnh gốc của bản thiết kế bên dưới.
+ * ẢNH — mỗi dự án một lớp ảnh chồng trong khung ảnh gốc, MỌC TỪ GÓC DƯỚI-TRÁI
+ * với cạnh vuông (clip-path inset: cạnh trên + cạnh phải chạy ra) khi vào, co
+ * về góc đó khi rời; lớp mới nhất nằm trên. Rời hết thì lộ ảnh gốc của bản thiết kế bên dưới.
  * Ảnh có chỗ cố định giữa cụm theo bản thiết kế (không bám con trỏ).
  * Đã thử kiểu mở / cắt bằng clip-path (ảnh mở từ trên xuống, rời thì cắt
  * dần) — người dùng chốt BỎ: chuyển cụm nhanh là khung ảnh loang lổ hai ba
@@ -63,10 +63,9 @@
     raNhip: 'cubic-bezier(0.61, 1, 0.88, 1)', // sine.out
 
     // ---------------------------------------------------------------- ảnh
-    // Ảnh dự án LAN RA TỪ GÓC DƯỚI-TRÁI (người dùng chốt): clip-path tròn tâm
-    // ở góc đó nở ra phủ khung khi vào, thu về đúng góc đó khi rời.
-    anhGocX: 0, // % — tâm vòng lan (0 0 = trên-trái, 0 100 = dưới-trái)
-    anhGocY: 100,
+    // Ảnh dự án MỌC TỪ GÓC DƯỚI-TRÁI, CẠNH VUÔNG (người dùng chốt): một hình
+    // chữ nhật neo ở góc đó, cạnh trên và cạnh phải chạy ra phủ khung khi vào,
+    // co về đúng góc đó khi rời.
     anhVaoMs: 700,
     anhVaoNhip: 'cubic-bezier(0.22, 1, 0.36, 1)',
     anhRaMs: 500,
@@ -132,16 +131,11 @@
       '.kx-page p.kx-fh.is-on{transition:color ' + VAO + '}',
       '.kx-page p.kx-fh.is-on::before{transition:transform ' + VAO + '}',
       '.kx-page p.kx-fh.is-day,.kx-page p.kx-fh.is-day::before{transition:none}',
-      // Lớp ảnh dự án: mờ dần vào / ra.
-      // Lớp ảnh dự án: vòng tròn tâm ở góc dưới-trái nở ra (vào) / thu về (ra).
-      // Mọi lớp chung MỘT tâm nên chuyển nhanh chỉ là các vòng đồng tâm chồng
-      // nhau — không loang lổ như kiểu mở/cắt theo hai phía đã bỏ.
-      // 150% của circle() tính theo đường chéo khung chia √2 → đủ phủ góc xa nhất.
-      '.kx-page .kx-fh-anh{position:absolute;inset:0;overflow:hidden;pointer-events:none;',
-      '  clip-path:circle(0% at ' + S.anhGocX + '% ' + S.anhGocY + '%);transition:clip-path ' + S.anhRaMs + 'ms ' + S.anhRaNhip + '}',
-      '.kx-page .kx-fh-anh.is-on{clip-path:circle(150% at ' + S.anhGocX + '% ' + S.anhGocY + '%);transition:clip-path ' + S.anhVaoMs + 'ms ' + S.anhVaoNhip + '}',
-      '.kx-page .kx-fh-anh img{transform:scale(' + S.anhPhong + ');transform-origin:' + S.anhGocX + '% ' + S.anhGocY + '%;transition:transform ' + S.anhRaMs + 'ms ' + S.anhRaNhip + '}',
-      '.kx-page .kx-fh-anh.is-on img{transform:scale(1);transition:transform ' + S.anhVaoMs + 'ms ' + S.anhVaoNhip + '}',
+      // Lớp ảnh dự án: hình chữ nhật neo góc dưới-trái — inset(trên phải dưới
+      // trái) = (100% 100% 0 0) là co hết về góc, (0 0 0 0) là phủ khung.
+      // Trạng thái nghỉ là ẨN; mọi chuyển động chạy bằng Web Animations.
+      '.kx-page .kx-fh-anh{position:absolute;inset:0;overflow:hidden;pointer-events:none;clip-path:inset(100% 100% 0% 0%)}',
+      '.kx-page .kx-fh-anh img{transform:scale(' + S.anhPhong + ');transform-origin:0% 100%}',
     ].join('\n')
     document.head.appendChild(st)
 
@@ -173,7 +167,7 @@
       im.dataset.src = duong[i]
       vo.appendChild(im)
       hop.appendChild(vo)
-      lop.push({ vo: vo, im: im })
+      lop.push({ vo: vo, im: im, a: null, b: null, day: false })
     }
     var napRoi = false
     function napTruoc() {
@@ -188,38 +182,75 @@
     if (document.readyState === 'complete') ranh(napTruoc)
     else addEventListener('load', function () { ranh(napTruoc) }, { once: true })
 
+    /* ------------------------------------------------------- ảnh
+     * Cơ chế người dùng chốt:
+     *   - Rê vào dự án: ảnh MỌC TỪ GÓC DƯỚI-TRÁI và CHẠY HẾT tới khi phủ đầy,
+     *     kể cả khi con trỏ đã rời giữa chừng.
+     *   - Đang mọc mà rê sang dự án khác: ảnh dự án mới mọc NGAY từ góc, đè lên
+     *     trên — không chờ ảnh trước xong, không co ảnh trước lại. Lớp nào phủ
+     *     đầy xong thì dọn (ẩn lặng lẽ) mọi lớp bên dưới.
+     *   - Rời hẳn danh sách (không vào khung ảnh): đợi lớp trên cùng phủ đầy
+     *     xong rồi mới co về góc, lộ lại ảnh gốc.
+     * Rời chữ thì chờ `giuMs` mới xét co — để kịp đưa con trỏ vào khung ảnh
+     * (thấu kính bẻ đúng ảnh dự án đó). */
+    var AN = 'inset(100% 100% 0% 0%)'
+    var HIEN = 'inset(0% 0% 0% 0%)'
     var z = 10
+    var dinh = -1 // lớp đang trên cùng (đang mọc hoặc đã phủ)
+    var dangTren = 0 // số cụm chữ con trỏ đang ở trong
+    var trongKhung = false
+
+    function huy(l) {
+      if (l.a) l.a.cancel()
+      if (l.b) l.b.cancel()
+      l.a = l.b = null
+    }
+    function datAn(l) {
+      huy(l) // huỷ animation là về trạng thái nghỉ của CSS = ẩn
+      l.day = false
+    }
     function hienAnh(i) {
       var l = lop[i]
-      if (!l) return
+      if (!l || i === dinh) return // đang mọc / đã phủ trên cùng: để nó chạy tiếp
       if (!l.im.src) l.im.src = l.im.dataset.src
-      l.vo.style.zIndex = String(++z) // lớp mới nhất nằm trên
-      l.vo.classList.add('is-on')
+      dinh = i
+      huy(l)
+      l.day = false
+      l.vo.style.zIndex = String(++z)
+      var o = { duration: S.anhVaoMs, easing: S.anhVaoNhip, fill: 'forwards' }
+      l.a = l.vo.animate([{ clipPath: AN }, { clipPath: HIEN }], o)
+      l.b = l.im.animate([{ transform: 'scale(' + S.anhPhong + ')' }, { transform: 'scale(1)' }], o)
+      var a = l.a
+      a.onfinish = function () {
+        if (l.a !== a) return
+        l.day = true
+        // Phủ đầy rồi: dọn mọi lớp bên dưới (đã bị che kín, ẩn đi không thấy).
+        if (dinh === i) lop.forEach(function (x, j) { if (x && j !== i) datAn(x) })
+      }
     }
-    function anAnh(i) {
+    // Co lớp trên cùng về góc — chỉ khi nó đã phủ đầy; đang mọc thì đợi xong.
+    function coVe() {
+      if (dinh < 0) return
+      var i = dinh
       var l = lop[i]
-      if (!l) return
-      l.vo.classList.remove('is-on')
+      var lam = function () {
+        if (dinh !== i || dangTren || trongKhung) return // lại có người rê vào
+        dinh = -1
+        huy(l)
+        var o = { duration: S.anhRaMs, easing: S.anhRaNhip, fill: 'forwards' }
+        l.a = l.vo.animate([{ clipPath: HIEN }, { clipPath: AN }], o)
+        l.b = l.im.animate([{ transform: 'scale(1)' }, { transform: 'scale(' + S.anhPhong + ')' }], o)
+        var a = l.a
+        a.onfinish = function () { if (l.a === a) datAn(l) }
+      }
+      if (l.day || !l.a) lam()
+      else l.a.finished.then(lam, function () {})
     }
 
-    /* ------------------------------------------------------- vào / ra
-     * Ảnh dự án KHÔNG tắt ngay khi rời chữ: chờ `giuMs` — nếu trong lúc đó con
-     * trỏ vào khung ảnh thì GIỮ ảnh đó (để thấu kính bẻ đúng ảnh dự án). */
-    var hen = {} // ảnh đang chờ tắt: index → timer
-    var giu = -1 // ảnh đang được giữ vì con trỏ ở trong khung
-    var cuoi = -1 // dự án vừa rời gần nhất
-    function tatNgay(i) {
-      clearTimeout(hen[i])
-      delete hen[i]
-      anAnh(i)
-    }
+    /* ------------------------------------------------------- vào / ra */
     function vao(i) {
-      // Vào dự án khác: mọi ảnh đang chờ tắt thì tắt luôn.
-      Object.keys(hen).forEach(function (j) { if (+j !== i) tatNgay(+j) })
-      if (giu >= 0 && giu !== i) tatNgay(giu)
+      dangTren++
       if (kinh) kinh.tatNgay()
-      clearTimeout(hen[i])
-      delete hen[i]
       chu[i].forEach(function (p) {
         p.classList.remove('is-day')
         p.classList.add('is-on')
@@ -227,6 +258,7 @@
       hienAnh(i)
     }
     function ra(i) {
+      dangTren = Math.max(0, dangTren - 1)
       var ps = chu[i]
       // Ép đầy ngay (không transition) rồi mới thả cho transition RA chạy.
       ps.forEach(function (p) {
@@ -235,11 +267,8 @@
       })
       void ps[0].offsetWidth // chốt trạng thái đầy trước khi thả
       ps.forEach(function (p) { p.classList.remove('is-day') })
-      cuoi = i
-      clearTimeout(hen[i])
-      hen[i] = setTimeout(function () {
-        delete hen[i]
-        if (giu !== i) anAnh(i)
+      setTimeout(function () {
+        if (!dangTren && !trongKhung) coVe()
       }, S.giuMs)
     }
 
@@ -256,12 +285,7 @@
     /* ------------------------------------------------------- khung ảnh */
     var kinh = null
     hop.addEventListener('pointerenter', function (e) {
-      // Vừa rời chữ (ảnh còn đang chờ tắt) → giữ ảnh đó.
-      if (cuoi >= 0 && hen[cuoi] != null) {
-        clearTimeout(hen[cuoi])
-        delete hen[cuoi]
-        giu = cuoi
-      }
+      trongKhung = true // giữ ảnh đang hiện cho thấu kính
       if (!S.lens) return
       if (!kinh) kinh = dungKinh(hop)
       if (kinh) kinh.vao(e, anhDangHien())
@@ -270,24 +294,14 @@
       if (kinh) kinh.di(e)
     })
     hop.addEventListener('pointerleave', function () {
+      trongKhung = false
       if (kinh) kinh.ra()
-      if (giu >= 0) {
-        anAnh(giu)
-        giu = -1
-      }
+      if (!dangTren) coVe()
     })
-    // Ảnh đang hiện trên cùng: lớp dự án đang bật có z-index cao nhất, không
-    // có thì ảnh gốc.
+    // Ảnh đang trên cùng (đang mọc hoặc đã phủ), không có thì ảnh gốc.
     function anhDangHien() {
-      var tot = null
-      var zt = -1
-      lop.forEach(function (l) {
-        if (l && l.vo.classList.contains('is-on') && +l.vo.style.zIndex > zt) {
-          zt = +l.vo.style.zIndex
-          tot = l.im
-        }
-      })
-      return tot && tot.naturalWidth ? tot : goc
+      var l = dinh >= 0 ? lop[dinh] : null
+      return l && l.im.naturalWidth ? l.im : goc
     }
   }
 
