@@ -12,13 +12,12 @@
  *         qua nhiều cụm là mỗi cụm sáng trọn rồi tắt dần lệch nhịp nhau: thành
  *         SÓNG nối đuôi con trỏ.
  *
- * ẢNH — mỗi dự án một lớp ảnh chồng, lớp mới nhất nằm trên (z-index tăng).
- *   vào:  clip-path inset(0 0 100% 0) → inset(0); ảnh trong dời -50% → 0,
- *         phóng 1.2 → 1 — 0.5 s power1.out
- *   ra:   clip-path → inset(100% 0 0 0); ảnh trong dời → 30%, phóng → 1.2
- *         — 0.6 s sine.out
- * Rời hết thì các lớp đều đã cắt đi, lộ ảnh gốc của bản thiết kế bên dưới.
+ * ẢNH — mỗi dự án một lớp ảnh chồng trong khung ảnh gốc, MỜ DẦN vào / ra;
+ * lớp mới nhất nằm trên. Rời hết thì lộ ảnh gốc của bản thiết kế bên dưới.
  * Ảnh có chỗ cố định giữa cụm theo bản thiết kế (không bám con trỏ).
+ * Đã thử kiểu mở / cắt bằng clip-path (ảnh mở từ trên xuống, rời thì cắt
+ * dần) — người dùng chốt BỎ: chuyển cụm nhanh là khung ảnh loang lổ hai ba
+ * ảnh cùng lúc, làm hỏng cảm giác của thanh chữ.
  *
  * Nền trang đen nên thanh SÁNG, chữ chuyển tối. Chạy bằng CSS transition +
  * Web Animations, không thư viện. Bám theo `data-n`. File KHÔNG chứa UI
@@ -32,21 +31,23 @@
     trai: '1:205', // cột trái — mỗi con là một cụm dự án
     phai: '1:217', // cột phải — cùng thứ tự với cột trái
     khung: '1:240', // khung ảnh giữa
-    // Ảnh theo thứ tự cụm (đường dẫn TƯƠNG ĐỐI — luật số 5). ĐỂ TRỐNG = dự án
-    // chưa có ảnh riêng: rê vào chỉ sáng thanh, ảnh giữa giữ nguyên ảnh gốc.
-    // KHÔNG mượn ảnh khác trên trang làm ảnh tạm: các ảnh poster / editorial
-    // trong file Figma là ảnh THAM KHẢO của tác giả khác (vd. image347.webp có
-    // chữ ký "© jaemin lee") — gắn vào dự án của Kaixa là sai, mà site công khai.
+    // Ảnh theo thứ tự cụm (đường dẫn TƯƠNG ĐỐI — luật số 5), mỗi dự án MỘT ẢNH
+    // KHÁC NHAU. Dự án chưa có ảnh riêng đang dùng TẠM ảnh khác của chính Kaixa
+    // trong kho Works (người dùng sẽ thay bằng work thật). Để trống = rê vào chỉ
+    // sáng thanh, ảnh giữa giữ ảnh gốc.
+    // KHÔNG mượn ảnh poster / editorial khác trên Home làm ảnh tạm: đó là ảnh
+    // THAM KHẢO của tác giả khác trong file Figma (vd. image347.webp có chữ ký
+    // "© jaemin lee") — gắn vào dự án của Kaixa là sai, mà site công khai.
     anh: [
       'assets/works/rectangle2998.webp', // 01 Re:active
-      '', // 02 Design Anthology — chưa có ảnh
-      '', // 03 Vietnam Exposition Center — chưa có ảnh
+      'assets/works/rectangle2999.webp', // 02 Design Anthology — TẠM
+      'assets/works/rectangle3004.webp', // 03 Vietnam Exposition Center — TẠM
       'assets/works/rectangle2992.webp', // 04 Lumen Studio
       'assets/works/rectangle2996.webp', // 05 Chande Bootcamp
-      '', // 06 Petrolimex — chưa có ảnh
+      'assets/works/rectangle3000.webp', // 06 Petrolimex — TẠM
       'assets/works/rectangle3002.webp', // 07 Niki Studio
-      '', // 08 TMRW Studio — chưa có ảnh
-      '', // 09 Furion Eco System — chưa có ảnh
+      'assets/works/rectangle3006.webp', // 08 TMRW Studio — TẠM
+      'assets/works/rectangle2994.webp', // 09 Furion Eco System — TẠM
       'assets/works/rectangle3005.png', // 10 Poster Collection (150Posters)
     ].join(','),
 
@@ -61,8 +62,7 @@
     raNhip: 'cubic-bezier(0.61, 1, 0.88, 1)', // sine.out
 
     // ---------------------------------------------------------------- ảnh
-    anhVaoMs: 500, // power1.out
-    anhRaMs: 600, // sine.out
+    anhMs: 280, // ms — ảnh dự án mờ dần vào / ra
   }
 
   var S = CONFIG
@@ -108,9 +108,9 @@
       '.kx-page p.kx-fh.is-on{transition:color ' + VAO + '}',
       '.kx-page p.kx-fh.is-on::before{transition:transform ' + VAO + '}',
       '.kx-page p.kx-fh.is-day,.kx-page p.kx-fh.is-day::before{transition:none}',
-      // Lớp ảnh dự án: vỏ cắt (clip-path), ảnh trong dời + phóng.
-      '.kx-page .kx-fh-anh{position:absolute;inset:0;overflow:hidden;clip-path:inset(0 0 100% 0);pointer-events:none}',
-      '.kx-page .kx-fh-anh img{will-change:transform}',
+      // Lớp ảnh dự án: mờ dần vào / ra.
+      '.kx-page .kx-fh-anh{position:absolute;inset:0;overflow:hidden;opacity:0;pointer-events:none;transition:opacity ' + S.anhMs + 'ms ease}',
+      '.kx-page .kx-fh-anh.is-on{opacity:1}',
     ].join('\n')
     document.head.appendChild(st)
 
@@ -142,7 +142,7 @@
       im.dataset.src = duong[i]
       vo.appendChild(im)
       hop.appendChild(vo)
-      lop.push({ vo: vo, im: im, a1: null, a2: null })
+      lop.push({ vo: vo, im: im })
     }
     var napRoi = false
     function napTruoc() {
@@ -158,42 +158,17 @@
     else addEventListener('load', function () { ranh(napTruoc) }, { once: true })
 
     var z = 10
-    function dung(l) {
-      if (l.a1) l.a1.cancel()
-      if (l.a2) l.a2.cancel()
-    }
     function hienAnh(i) {
       var l = lop[i]
       if (!l) return
       if (!l.im.src) l.im.src = l.im.dataset.src
-      dung(l)
-      l.vo.style.zIndex = String(++z)
-      // Luôn mở lại từ trên xuống.
-      l.a1 = l.vo.animate(
-        [{ clipPath: 'inset(0% 0% 100% 0%)' }, { clipPath: 'inset(0% 0% 0% 0%)' }],
-        { duration: S.anhVaoMs, easing: S.vaoNhip, fill: 'forwards' }
-      )
-      l.a2 = l.im.animate(
-        [{ transform: 'translateY(-50%) scale(1.2)' }, { transform: 'translateY(0) scale(1)' }],
-        { duration: S.anhVaoMs, easing: S.vaoNhip, fill: 'forwards' }
-      )
+      l.vo.style.zIndex = String(++z) // lớp mới nhất nằm trên
+      l.vo.classList.add('is-on')
     }
-    // Ra: nối tiếp từ chỗ đang dở — đọc trạng thái hiện tại TRƯỚC khi huỷ
-    // animation đang chạy.
     function anAnh(i) {
       var l = lop[i]
       if (!l) return
-      var cs = getComputedStyle(l.vo).clipPath
-      var ts = getComputedStyle(l.im).transform
-      dung(l)
-      l.a1 = l.vo.animate(
-        [{ clipPath: cs === 'none' ? 'inset(0% 0% 0% 0%)' : cs }, { clipPath: 'inset(100% 0% 0% 0%)' }],
-        { duration: S.anhRaMs, easing: S.raNhip, fill: 'forwards' }
-      )
-      l.a2 = l.im.animate(
-        [{ transform: ts === 'none' ? 'translateY(0) scale(1)' : ts }, { transform: 'translateY(30%) scale(1.2)' }],
-        { duration: S.anhRaMs, easing: S.raNhip, fill: 'forwards' }
-      )
+      l.vo.classList.remove('is-on')
     }
 
     /* ------------------------------------------------------- vào / ra */
