@@ -32,17 +32,21 @@
     trai: '1:205', // cột trái — mỗi con là một cụm dự án
     phai: '1:217', // cột phải — cùng thứ tự với cột trái
     khung: '1:240', // khung ảnh giữa
-    // Ảnh theo thứ tự cụm (đường dẫn TƯƠNG ĐỐI — luật số 5).
+    // Ảnh theo thứ tự cụm (đường dẫn TƯƠNG ĐỐI — luật số 5). ĐỂ TRỐNG = dự án
+    // chưa có ảnh riêng: rê vào chỉ sáng thanh, ảnh giữa giữ nguyên ảnh gốc.
+    // KHÔNG mượn ảnh khác trên trang làm ảnh tạm: các ảnh poster / editorial
+    // trong file Figma là ảnh THAM KHẢO của tác giả khác (vd. image347.webp có
+    // chữ ký "© jaemin lee") — gắn vào dự án của Kaixa là sai, mà site công khai.
     anh: [
       'assets/works/rectangle2998.webp', // 01 Re:active
-      'assets/home/image353.webp', // 02 Design Anthology — ảnh tạm
-      'assets/home/rectangle2839.webp', // 03 Vietnam Exposition Center — ảnh tạm
+      '', // 02 Design Anthology — chưa có ảnh
+      '', // 03 Vietnam Exposition Center — chưa có ảnh
       'assets/works/rectangle2992.webp', // 04 Lumen Studio
       'assets/works/rectangle2996.webp', // 05 Chande Bootcamp
-      'assets/home/rectangle2854.webp', // 06 Petrolimex — ảnh tạm
+      '', // 06 Petrolimex — chưa có ảnh
       'assets/works/rectangle3002.webp', // 07 Niki Studio
-      'assets/home/image347.webp', // 08 TMRW Studio — ảnh tạm
-      'assets/home/rectangle2866.webp', // 09 Furion Eco System — ảnh tạm
+      '', // 08 TMRW Studio — chưa có ảnh
+      '', // 09 Furion Eco System — chưa có ảnh
       'assets/works/rectangle3005.png', // 10 Poster Collection (150Posters)
     ].join(','),
 
@@ -81,7 +85,7 @@
     var cumTrai = Array.prototype.slice.call(trai.children)
     var cumPhai = Array.prototype.slice.call(phai.children)
     var duong = S.anh.split(',').map(function (x) { return x.trim() })
-    var n = Math.min(cumTrai.length, duong.length)
+    var n = Math.min(cumTrai.length, cumPhai.length, duong.length)
 
     /* ------------------------------------------------------- CSS thanh
      * ::before của từng <p> (z-index -1 trong isolation riêng → sau chữ, trên
@@ -121,10 +125,14 @@
     }
 
     /* ------------------------------------------------------- lớp ảnh
-     * Cùng class với ảnh gốc nên cùng cỡ và object-fit. Tải khi con trỏ vào
-     * cột lần đầu, không tải lúc mở trang. */
+     * Cùng class với ảnh gốc nên cùng cỡ và object-fit. Nạp sau khi trang tải
+     * xong (lúc rảnh), không chặn lúc mở trang. */
     var lop = []
     for (var i = 0; i < n; i++) {
+      if (!duong[i]) {
+        lop.push(null) // chưa có ảnh riêng — giữ ảnh gốc
+        continue
+      }
       var vo = document.createElement('div')
       vo.className = 'kx-fh-anh'
       var im = document.createElement('img')
@@ -140,9 +148,14 @@
     function napTruoc() {
       if (napRoi) return
       napRoi = true
-      lop.forEach(function (l) { if (!l.im.src) l.im.src = l.im.dataset.src })
+      lop.forEach(function (l) { if (l && !l.im.src) l.im.src = l.im.dataset.src })
     }
     ;[trai, phai].forEach(function (cot) { cot.addEventListener('pointerenter', napTruoc) })
+    // Nạp sẵn lúc trình duyệt rảnh sau khi trang tải xong — chờ tới lần rê đầu
+    // mới nạp thì lớp ảnh mở ra TRỐNG rồi ảnh bật lên giữa chừng, trông như lỗi.
+    var ranh = window.requestIdleCallback || function (f) { return setTimeout(f, 300) }
+    if (document.readyState === 'complete') ranh(napTruoc)
+    else addEventListener('load', function () { ranh(napTruoc) }, { once: true })
 
     var z = 10
     function dung(l) {
@@ -151,6 +164,7 @@
     }
     function hienAnh(i) {
       var l = lop[i]
+      if (!l) return
       if (!l.im.src) l.im.src = l.im.dataset.src
       dung(l)
       l.vo.style.zIndex = String(++z)
@@ -168,6 +182,7 @@
     // animation đang chạy.
     function anAnh(i) {
       var l = lop[i]
+      if (!l) return
       var cs = getComputedStyle(l.vo).clipPath
       var ts = getComputedStyle(l.im).transform
       dung(l)
