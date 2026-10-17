@@ -60,9 +60,9 @@
     // Cháy xong thì LỘ RA bộ ảnh mới nằm sẵn bên dưới, không phải hiện lại ảnh
     // cũ. Ô nào để trống thì vật đó cư xử theo `mode` như thường.
     swap: true,
-    newDiscLeft: '', // ảnh mặt đĩa TRÁI mới
-    newDiscRight: '', // ảnh mặt đĩa PHẢI mới
-    newPoster: '', // ảnh profile mới (thay poster giữa)
+    newDiscLeft: 'assets/media/237.png', // ảnh mặt đĩa TRÁI mới
+    newDiscRight: 'assets/media/237.png', // ảnh mặt đĩa PHẢI mới
+    newPoster: 'assets/media/magnific_ghost-rider-style-transfo_9ZcE8EwNYZ.png', // ảnh profile mới (thay poster giữa)
 
     // ---------------------------------------------------------- chất vết cháy
     from: 'bottom', // mép nào cháy trước: 'bottom' | 'top' | 'edge' | 'center'

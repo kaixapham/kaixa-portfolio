@@ -33,6 +33,16 @@
   const CONFIG = {
     enabled: true, // vào trang là chạy màn loading
 
+    // --------------------------------------------------- loading xong đi đâu
+    // Màn loading là CỬA VÀO của cả site, nên hết màn thì sang Home chứ không
+    // dừng lại ở contact. Để TRỐNG là ở lại contact như trước.
+    goTo: 'home.html',
+    // CHỈ nhảy ở lần vào đầu tiên của mỗi phiên trình duyệt. Thiếu cờ này là
+    // sập bẫy: nav có mục `[5] CONTACT` trỏ về chính index.html, mà index.html
+    // lại luôn nhảy sang Home — thành ra không bao giờ vào được trang contact.
+    // Lần sau quay lại thì bỏ hẳn màn loading, vào thẳng contact.
+    goToOnce: true,
+
     // ------------------------------------------------------------- nhịp chạy
     duration: 7.6, // giây — đếm từ 0 tới 100%
     fadeOut: 0.7, // giây — màn loading tan dần, lộ trang contact
@@ -426,6 +436,43 @@ html[data-kx-ld='on'] :is(${S.hide}){visibility:hidden}
     nhayTimer = setInterval(nhay, Math.max(0.05, S.every) * 1000)
   }
 
+  const KHOA_PHIEN = 'kx-da-vao'
+
+  /* Đã vào site trong phiên này chưa. sessionStorage chứ không localStorage:
+   * đóng tab rồi mở lại thì vẫn được xem màn loading từ đầu. */
+  function daVao() {
+    try {
+      return sessionStorage.getItem(KHOA_PHIEN) === '1'
+    } catch (e) {
+      return false
+    }
+  }
+
+  function danhDauDaVao() {
+    try {
+      sessionStorage.setItem(KHOA_PHIEN, '1')
+    } catch (e) {}
+  }
+
+  /* Có phải lượt vào ĐẦU TIÊN của phiên không. Chốt đúng một lần lúc boot rồi
+   * giữ nguyên — KHÔNG đọc lại sessionStorage ở cuối màn. Bản đầu đọc lại, mà
+   * boot đã kịp đánh dấu phiên trước khi chạy, nên tới lúc kết màn nó thấy cờ
+   * đã bật và tưởng đây là lượt quay lại: loading chạy hết rồi đứng im ở
+   * contact, không bao giờ sang Home. Đây từng là lỗi thật. */
+  let laLanDau = false
+
+  /* Loading xong thì đi đâu — trả về '' nghĩa là ở lại trang này. */
+  function diDau() {
+    if (!S.goTo) return ''
+    if (S.goToOnce && !laLanDau) return ''
+    return S.goTo
+  }
+
+  function diThoi() {
+    danhDauDaVao()
+    location.href = diDau() || S.goTo
+  }
+
   function tan() {
     if (!root || xong) return
     xong = true
@@ -442,12 +489,17 @@ html[data-kx-ld='on'] :is(${S.hide}){visibility:hidden}
       root = null
     }
 
-    // Có màn chuyển pixel thì để nó cắt lớp phủ đi; cờ `data-kx-ld` phải GIỮ
-    // tới hết màn quét, vì nó đang nâng tiêu đề / cột chữ / mấy cái dấu lên
-    // trên lớp phủ. Không có thì mờ dần như cũ.
+    // Sắp rời trang thì KHÔNG cắt lớp phủ đi: cắt là lộ trang contact ra một
+    // nhịp rồi mới nhảy, nhìn như chớp nhầm trang. Giữ lớp phủ nguyên, cho dải
+    // pixel quét ngang qua nó, quét xong mới điều hướng.
+    const roiTrang = !!diDau()
     const pt = window.KX_PAGE_TRANSITION
     if (pt && pt.config.enabled) {
-      pt.run(root).then(bao)
+      pt.run(roiTrang ? null : root).then(roiTrang ? diThoi : bao)
+      return
+    }
+    if (roiTrang) {
+      sau(diThoi, 0.05)
       return
     }
     root.setAttribute('data-out', 'true')
@@ -475,7 +527,18 @@ html[data-kx-ld='on'] :is(${S.hide}){visibility:hidden}
 
   function boot(con) {
     if (!S.enabled) return
+    // Quay lại contact từ nav (đã vào site trong phiên này) thì bỏ hẳn màn
+    // loading — bắt xem lại 7.6 giây nữa là vô lý. Vẫn phải phát
+    // `kx-loading-done`, vì kx-burning-open.js chờ đúng sự kiện đó mới chạy;
+    // không phát thì màn mở đầu của trang contact vĩnh viễn không bao giờ chạy.
+    laLanDau = !daVao()
+    if (S.goTo && S.goToOnce && !laLanDau) {
+      document.documentElement.removeAttribute('data-kx-ld')
+      window.dispatchEvent(new CustomEvent('kx-loading-done'))
+      return
+    }
     if (document.querySelector('.hm')) {
+      danhDauDaVao()
       start()
       return
     }

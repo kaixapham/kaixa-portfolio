@@ -166,7 +166,11 @@
     note: 'Enjoy the Vietnam vibe\nand\n\nthink about the project we will collaborate on in\nthe future',
     social: ['LINKEDIN', 'BEHANCE', 'DRIBBBLE'],
     awards: ['AWWWARDS', 'MUZLI', 'INSTAGRAM'],
-    nav: { index: '[1]', label: 'HOME' },
+    // Trang này LÀ trang contact, không phải Home. Số và tên phải khớp danh
+    // sách 5 trang trong kx-site-nav.js (home / works / detail / about /
+    // contact) — file đó tìm phần tử theo node id Figma nên không với tới
+    // thanh nav của trang này, phải khai tay ở đây.
+    nav: { index: '[5]', label: 'CONTACT' },
     mail: { word: '(Mail', close: ')', address: '(hello@kaixa.com)', href: 'mailto:hello@kaixa.com' },
     marks: { open: '[', close: ']', tag: '[INSPI]' },
     player: {
@@ -352,8 +356,18 @@ html[data-hm],html[data-hm] body{margin:0;padding:0;height:100%;overflow:hidden}
 .hm-nav__logo{width:${e(28)};height:${e(28)}}
 .hm-nav__mail{width:${e(24)};height:${e(24)}}
 .hm-nav__label{display:flex;align-items:center;gap:${e(16)};color:${S.colorWhite}}
-.hm-nav__grid{width:${e(48)};height:${e(48)};flex:none;background:${S.colorWhite};border-radius:${e(4)};display:grid;place-items:center}
-.hm-nav__grid img{width:${e(16)};height:${e(16)}}
+/* Hai span khai letter-spacing RIENG, dung nhu nav bon trang dung tu Figma:
+ * [5] = -0.84px thiet ke, CONTACT = -0.28px. .hm-mono de -.06em cho ca hai nen
+ * chu CONTACT tung hep hon ben kia gan 4px. text-box-trim cat hop chu dung bang
+ * chieu cao chu hoa de nhan canh giua y het nav bon trang do. */
+.hm-nav__label>span{text-box-trim:trim-both;text-box-edge:cap alphabetic}
+.hm-nav__label>span:first-child{letter-spacing:${-0.84 / 14}em}
+.hm-nav__label>span+span{letter-spacing:${-0.28 / 14}em}
+/* .hm BAT BUOC: .hm button{background:none} o tren cu the hon .hm-nav__grid
+ * mot bac nen no xoa sach nen trang -- 4 cham #121212 chim vao day #040203
+ * va nut trong nhu khong co. Day tung la loi that (xem them .kx-bm). */
+.hm .hm-nav__grid{width:${e(48)};height:${e(48)};flex:none;background:${S.colorWhite};border-radius:${e(4)};display:grid;place-items:center}
+.hm .hm-nav__grid img{width:${e(16)};height:${e(16)}}
 
 /* ----------------------------------------------------------------- player
  * Cả cụm là một khối rộng 220 (px thiết kế) dán vào mép trên, canh giữa ngang.

@@ -1,0 +1,262 @@
+{
+  "version": 1,
+  "savedAt": "2026-10-16T21:52:35.370Z",
+  "params": {
+    "body": {
+      "ratio": "3:4",
+      "heightScale": 0.9,
+      "radius": 0.35,
+      "bevel": 0.015,
+      "depth": 0.9,
+      "edgeSplit": 0.78,
+      "groove": 0.03,
+      "backTone": 0.68
+    },
+    "strip": {
+      "widthRatio": 0.24,
+      "tone": 0.76,
+      "slot": 0.056,
+      "slotDepth": 0.06,
+      "panelInset": 0.16,
+      "panelExtrude": 0.05,
+      "panelTone": 0.58
+    },
+    "content": {
+      "pad": 0.15,
+      "gap": 0.11
+    },
+    "disc": {
+      "radiusScale": 1,
+      "backdropGap": 0.02,
+      "recessDepth": 0.19,
+      "thickness": 1.34,
+      "gloss": 0.42,
+      "rimBevel": 0.02,
+      "transition": "lift",
+      "transitionSpeed": 1
+    },
+    "asset": {
+      "height": 0.16,
+      "tone": 0.72
+    },
+    "screen": {
+      "height": 0.166,
+      "hud": {
+        "show": true,
+        "nowPlaying": "TOTAL: 11:31",
+        "time": "3:14",
+        "album": "ALBUM: MCK",
+        "track": "01",
+        "padding": 0.05,
+        "fontSize": 0.1,
+        "tracking": -0.02,
+        "color": "#cfd6dd",
+        "autoTime": true
+      }
+    },
+    "buttons": {
+      "radiusRatio": 0.27,
+      "count": 3,
+      "groupStart": 0.3,
+      "spacing": 0.11,
+      "bottomInset": 0.11,
+      "face": "flat",
+      "bevel": 0.17,
+      "wellBevel": 0.02,
+      "surface": "matte",
+      "iconScale": 0.33,
+      "iconGlow": "press",
+      "iconColor": "#595959",
+      "iconIntensity": 1.75,
+      "actions": [
+        "transport",
+        "preset",
+        "next",
+        "split"
+      ]
+    },
+    "knob": {
+      "radiusRatio": 0.42,
+      "depthRatio": 0.72,
+      "flutes": 54,
+      "position": 0.14,
+      "dish": 0.11,
+      "rimBevel": 0.35,
+      "baseBevel": 0.1,
+      "grooveWidth": 0.08,
+      "grooveDepth": 0.05,
+      "groovePos": 0.08
+    },
+    "screws": {
+      "padRatio": 0.15,
+      "radiusRatio": 0.09,
+      "head": 0.08,
+      "socket": -0.24
+    },
+    "side": {
+      "tag": {
+        "show": true,
+        "width": 0.62,
+        "height": 0.23,
+        "position": 0.18,
+        "depthOffset": 0.11,
+        "radius": 0.05,
+        "extrude": 0.025,
+        "holo": {
+          "show": false,
+          "intensity": 0.5,
+          "scale": 26,
+          "angle": 24,
+          "sheen": 1.1,
+          "speed": 0.12
+        }
+      },
+      "power": {
+        "show": true,
+        "width": 0.59,
+        "height": 0.14,
+        "radius": 0.08,
+        "position": 0.88,
+        "depthOffset": 0.11,
+        "raise": 0.05,
+        "bevel": 0.022,
+        "gap": 0.014,
+        "wellDepth": 0.014,
+        "iconScale": 0.42,
+        "iconAngle": 90
+      }
+    },
+    "leds": {
+      "count": 3,
+      "spacing": 0.17,
+      "size": 0.035,
+      "position": 0.81,
+      "color": "#ffffff"
+    }
+  },
+  "state": {
+    "look": "silver",
+    "knob": 0.258,
+    "presetIndex": 0,
+    "intensity": 0.5,
+    "hue": 36,
+    "material": {
+      "finish": "blasted",
+      "color": "#ffffff",
+      "roughness": 0.42,
+      "metalness": 0.95,
+      "anisotropy": 0,
+      "rotation": 0,
+      "grainScale": 1,
+      "grainDensity": 1,
+      "clearcoat": 0.12,
+      "clearcoatRoughness": 0.62,
+      "texture": {
+        "shell": {
+          "blend": 0.18,
+          "relief": 0.02,
+          "scale": 0.41
+        },
+        "knob": {
+          "blend": 0.65,
+          "relief": 0.23,
+          "scale": 2.39
+        },
+        "button": {
+          "blend": 0.87,
+          "relief": 3.32,
+          "scale": 10.21
+        }
+      },
+      "screenReflection": 0.94,
+      "wear": {
+        "kind": "brushed",
+        "density": 1.11,
+        "depth": 0.44,
+        "angle": 0,
+        "contrast": 3,
+        "scale": 1.55,
+        "seed": 77574
+      }
+    }
+  },
+  "env": {
+    "preset": "c4d",
+    "intensity": 0.62,
+    "rotation": 249,
+    "exposure": 0.9,
+    "shadow": 0.7,
+    "bloom": {
+      "on": false,
+      "strength": 0.04,
+      "radius": 0.27,
+      "threshold": 0.8
+    },
+    "sfx": {
+      "on": true,
+      "volume": 0.15,
+      "kit": "daft",
+      "pitch": 0.4,
+      "length": 3,
+      "bright": 1.6,
+      "drive": 0.38,
+      "mech": 0.55,
+      "ring": 180,
+      "crackle": 0.87,
+      "res": 16,
+      "formant": 0.8
+    },
+    "rig": {
+      "key": {
+        "color": "#ffffff",
+        "intensity": 1.17
+      },
+      "fill": {
+        "color": "#fafafa",
+        "intensity": 3.11
+      },
+      "rim": {
+        "color": "#ffffff",
+        "intensity": 0.16
+      },
+      "hemi": {
+        "intensity": 2.59
+      }
+    }
+  },
+  "album": {
+    "total": ""
+  },
+  "current": 0,
+  "assets": {
+    "disc": "assets/cd3d/img/disc.webp",
+    "graphic": "assets/cd3d/img/graphic.jpg",
+    "tag": "assets/cd3d/img/tag.jpg",
+    "power": "assets/cd3d/img/power.png",
+    "surface": {
+      "shell": "assets/cd3d/img/shell.jpg",
+      "knob": "assets/cd3d/img/knob.jpg",
+      "button": "assets/cd3d/img/button.jpg"
+    },
+    "icons": [
+      "assets/cd3d/img/icon-1.png",
+      "assets/cd3d/img/icon-2.png",
+      "assets/cd3d/img/icon-3.png",
+      "assets/cd3d/img/icon-4.png",
+      null,
+      null
+    ]
+  },
+  "tracks": [
+    {
+      "i": 3,
+      "title": "TRIUMPH OF LIGHT",
+      "album": "KAIXA",
+      "number": "01",
+      "duration": "3:27",
+      "banner": "assets/cd3d/tracks/04-triumph-of-light-banner.jpg",
+      "disc": null,
+      "audio": "assets/cd3d/tracks/04-triumph-of-light.mp3"
+    }
+  ]
+}
