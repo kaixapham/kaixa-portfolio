@@ -63,6 +63,21 @@
 
     // ---------------------------------------------------------------- ảnh
     anhMs: 280, // ms — ảnh dự án mờ dần vào / ra
+    // Rời chữ thì ảnh dự án còn giữ bấy nhiêu ms — đủ để đưa chuột từ chữ sang
+    // khung ảnh mà ảnh không kịp về ảnh gốc.
+    giuMs: 450,
+
+    // --------------------------------------- thấu kính khi chuột TRONG ẢNH
+    // Chỉ chạy khi con trỏ ở trong khung ảnh — rê chữ không kích hoạt.
+    lens: true,
+    lensR: 0.34, // bán kính thấu kính, phần bề rộng khung ảnh
+    lensZoom: 0.45, // độ phóng ở tâm
+    lensDisp: 5, // px — tách đỏ/lam sát viền
+    lensWave: 0.06, // viền gợn theo tiếp tuyến (phần bán kính)
+    lensRim: 0.7, // viền sáng + quầng
+    lensColor: '#009dff',
+    lensMuot: 0.2, // 0..1 — thấu kính đuổi theo con trỏ mỗi khung 60fps
+    lensVao: 0.12, // 0..1 — tốc độ hiện / tắt thấu kính mỗi khung
   }
 
   var S = CONFIG
@@ -171,8 +186,24 @@
       l.vo.classList.remove('is-on')
     }
 
-    /* ------------------------------------------------------- vào / ra */
+    /* ------------------------------------------------------- vào / ra
+     * Ảnh dự án KHÔNG tắt ngay khi rời chữ: chờ `giuMs` — nếu trong lúc đó con
+     * trỏ vào khung ảnh thì GIỮ ảnh đó (để thấu kính bẻ đúng ảnh dự án). */
+    var hen = {} // ảnh đang chờ tắt: index → timer
+    var giu = -1 // ảnh đang được giữ vì con trỏ ở trong khung
+    var cuoi = -1 // dự án vừa rời gần nhất
+    function tatNgay(i) {
+      clearTimeout(hen[i])
+      delete hen[i]
+      anAnh(i)
+    }
     function vao(i) {
+      // Vào dự án khác: mọi ảnh đang chờ tắt thì tắt luôn.
+      Object.keys(hen).forEach(function (j) { if (+j !== i) tatNgay(+j) })
+      if (giu >= 0 && giu !== i) tatNgay(giu)
+      if (kinh) kinh.tatNgay()
+      clearTimeout(hen[i])
+      delete hen[i]
       chu[i].forEach(function (p) {
         p.classList.remove('is-day')
         p.classList.add('is-on')
@@ -188,7 +219,12 @@
       })
       void ps[0].offsetWidth // chốt trạng thái đầy trước khi thả
       ps.forEach(function (p) { p.classList.remove('is-day') })
-      anAnh(i)
+      cuoi = i
+      clearTimeout(hen[i])
+      hen[i] = setTimeout(function () {
+        delete hen[i]
+        if (giu !== i) anAnh(i)
+      }, S.giuMs)
     }
 
     function noi(cum, i) {
@@ -199,6 +235,252 @@
     for (var k = 0; k < n; k++) {
       noi(cumTrai[k], k)
       noi(cumPhai[k], k)
+    }
+
+    /* ------------------------------------------------------- khung ảnh */
+    var kinh = null
+    hop.addEventListener('pointerenter', function (e) {
+      // Vừa rời chữ (ảnh còn đang chờ tắt) → giữ ảnh đó.
+      if (cuoi >= 0 && hen[cuoi] != null) {
+        clearTimeout(hen[cuoi])
+        delete hen[cuoi]
+        giu = cuoi
+      }
+      if (!S.lens) return
+      if (!kinh) kinh = dungKinh(hop)
+      if (kinh) kinh.vao(e, anhDangHien())
+    })
+    hop.addEventListener('pointermove', function (e) {
+      if (kinh) kinh.di(e)
+    })
+    hop.addEventListener('pointerleave', function () {
+      if (kinh) kinh.ra()
+      if (giu >= 0) {
+        anAnh(giu)
+        giu = -1
+      }
+    })
+    // Ảnh đang hiện trên cùng: lớp dự án đang bật có z-index cao nhất, không
+    // có thì ảnh gốc.
+    function anhDangHien() {
+      var tot = null
+      var zt = -1
+      lop.forEach(function (l) {
+        if (l && l.vo.classList.contains('is-on') && +l.vo.style.zIndex > zt) {
+          zt = +l.vo.style.zIndex
+          tot = l.im
+        }
+      })
+      return tot && tot.naturalWidth ? tot : goc
+    }
+  }
+
+  /* ============================================================ THẤU KÍNH
+   * Canvas WebGL2 phủ đúng khung ảnh, chỉ dựng khi con trỏ vào khung lần
+   * đầu. Vẽ lại CHÍNH ảnh đang hiện (object-fit: cover, giữa) nên lúc thấu
+   * kính chưa hiện thì canvas trùng khít ảnh — bật canvas lên không có cú
+   * chớp. Thấu kính: phóng ở tâm, viền gợn theo tiếp tuyến, tách đỏ/lam sát
+   * viền, viền sáng + quầng màu — cùng ngôn ngữ với kính lỏng của Works.
+   * Vòng vẽ chỉ chạy khi thấu kính đang hiện hoặc đang tắt dần. Không viết
+   * dấu huyền trong khối GLSL (luật số 4). */
+  var VERT = '#version 300 es\nin vec2 p;\nvoid main(){ gl_Position = vec4(p, 0.0, 1.0); }'
+  var FRAG = [
+    '#version 300 es',
+    'precision highp float;',
+    'uniform sampler2D uT;',
+    'uniform vec2 uRes, uImg, uM;', // khung (px css), cỡ gốc ảnh, tâm thấu kính (px css)
+    'uniform float uDpr, uR, uZoom, uDisp, uWave, uRim, uStr, uTime;',
+    'uniform vec3 uCol;',
+    'out vec4 o;',
+    'vec3 anh(vec2 p){',
+    '  vec2 uv = p / uRes;',
+    '  float fa = uRes.x / uRes.y;',
+    '  float ia = uImg.x / uImg.y;',
+    '  if (ia > fa) uv.x = 0.5 + (uv.x - 0.5) * fa / ia;',
+    '  else uv.y = 0.5 + (uv.y - 0.5) * ia / fa;',
+    '  return texture(uT, clamp(uv, 0.0, 1.0)).rgb;',
+    '}',
+    'void main(){',
+    '  vec2 p = vec2(gl_FragCoord.x, uRes.y * uDpr - gl_FragCoord.y) / uDpr;',
+    '  vec3 col = anh(p);',
+    '  vec2 d = p - uM;',
+    '  float nd = length(d) / max(uR, 1.0);',
+    '  if (uStr > 0.001 && nd < 1.0) {',
+    '    vec2 dir = d / max(length(d), 1e-4);',
+    '    vec2 tn = vec2(-dir.y, dir.x);',
+    '    float ang = atan(d.y, d.x);',
+    '    float k = uZoom * uStr * (1.0 - nd * nd);', // phóng mạnh nhất ở tâm
+    '    float rimS = smoothstep(0.55, 1.0, nd);',
+    '    vec2 sv = uM + d * (1.0 - k) + tn * sin(ang * 2.0 + uTime * 1.2) * uWave * uR * rimS * uStr;',
+    '    float dsp = uDisp * uStr * smoothstep(0.4, 1.0, nd);',
+    '    vec3 c = vec3(anh(sv + dir * dsp).r, anh(sv).g, anh(sv - dir * dsp).b);',
+    '    float rim = exp(-pow((nd - 0.97) / 0.025, 2.0)) * uRim * uStr;',
+    '    float aura = exp(-pow((nd - 0.9) / 0.08, 2.0)) * 0.35 * uRim * uStr;',
+    '    c += vec3(rim) + uCol * aura;',
+    '    col = mix(col, c, smoothstep(1.0, 0.985, nd));',
+    '  }',
+    '  o = vec4(col, 1.0);',
+    '}',
+  ].join('\n')
+
+  function dungKinh(hop) {
+    var cv = document.createElement('canvas')
+    cv.setAttribute('aria-hidden', 'true')
+    cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;z-index:2147483000;visibility:hidden'
+    var gl = cv.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false })
+    if (!gl) return null
+    function sh(t, src) {
+      var x = gl.createShader(t)
+      gl.shaderSource(x, src)
+      gl.compileShader(x)
+      if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) {
+        console.warn('kx-feature-hover:', gl.getShaderInfoLog(x))
+        return null
+      }
+      return x
+    }
+    var vs = sh(gl.VERTEX_SHADER, VERT)
+    var fs = sh(gl.FRAGMENT_SHADER, FRAG)
+    if (!vs || !fs) return null
+    var prog = gl.createProgram()
+    gl.attachShader(prog, vs)
+    gl.attachShader(prog, fs)
+    gl.bindAttribLocation(prog, 0, 'p')
+    gl.linkProgram(prog)
+    gl.useProgram(prog)
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer())
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW)
+    gl.enableVertexAttribArray(0)
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
+    var U = {}
+    ;['uT', 'uRes', 'uImg', 'uM', 'uDpr', 'uR', 'uZoom', 'uDisp', 'uWave', 'uRim', 'uStr', 'uTime', 'uCol'].forEach(function (n) {
+      U[n] = gl.getUniformLocation(prog, n)
+    })
+    gl.uniform1i(U.uT, 0)
+    var tex = gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_2D, tex)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    hop.appendChild(cv)
+
+    var anhNay = null
+    var W = 1
+    var H = 1
+    var dpr = 1
+    var trongKhung = false
+    var str = 0 // độ hiện của thấu kính 0..1
+    var mx = 0
+    var my = 0 // tâm thấu kính (đuổi theo con trỏ)
+    var tx = 0
+    var ty = 0 // con trỏ
+    var raf = 0
+    var last = 0
+    var mau = [0, 0.6, 1]
+    ;(function () {
+      var h = String(S.lensColor).replace('#', '')
+      var v = parseInt(h, 16)
+      if (!isNaN(v)) mau = [((v >> 16) & 255) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255]
+    })()
+
+    // Đo khung lúc VÀO (không đo mỗi khung — luật cấm số 1).
+    function doKhung() {
+      var b = hop.getBoundingClientRect()
+      W = Math.max(1, b.width)
+      H = Math.max(1, b.height)
+      dpr = Math.min(window.devicePixelRatio || 1, 2)
+      cv.width = Math.round(W * dpr)
+      cv.height = Math.round(H * dpr)
+      gl.viewport(0, 0, cv.width, cv.height)
+      return b
+    }
+
+    function napAnh(im) {
+      if (im === anhNay) return
+      anhNay = im
+      gl.bindTexture(gl.TEXTURE_2D, tex)
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
+      try {
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im)
+      } catch (e) {}
+    }
+
+    function ve(now) {
+      gl.uniform2f(U.uRes, W, H)
+      gl.uniform2f(U.uImg, anhNay.naturalWidth || 1, anhNay.naturalHeight || 1)
+      gl.uniform2f(U.uM, mx, my)
+      gl.uniform1f(U.uDpr, dpr)
+      gl.uniform1f(U.uR, S.lensR * W)
+      gl.uniform1f(U.uZoom, S.lensZoom)
+      gl.uniform1f(U.uDisp, S.lensDisp)
+      gl.uniform1f(U.uWave, S.lensWave)
+      gl.uniform1f(U.uRim, S.lensRim)
+      gl.uniform1f(U.uStr, str)
+      gl.uniform1f(U.uTime, now / 1000)
+      gl.uniform3f(U.uCol, mau[0], mau[1], mau[2])
+      gl.drawArrays(gl.TRIANGLES, 0, 3)
+    }
+
+    function khung(now) {
+      raf = 0
+      var dt = Math.min((now - last) / 1000, 1 / 20) || 1 / 60
+      last = now
+      var f = dt * 60
+      var km = 1 - Math.pow(1 - S.lensMuot, f)
+      mx += (tx - mx) * km
+      my += (ty - my) * km
+      var ks = 1 - Math.pow(1 - S.lensVao, f)
+      str += ((trongKhung ? 1 : 0) - str) * ks
+      if (!trongKhung && str < 0.002) {
+        // Tắt hẳn: giấu canvas, lộ lại các lớp ảnh DOM.
+        str = 0
+        cv.style.visibility = 'hidden'
+        return
+      }
+      ve(now)
+      raf = requestAnimationFrame(khung)
+    }
+    function chay() {
+      if (!raf) {
+        last = performance.now()
+        raf = requestAnimationFrame(khung)
+      }
+    }
+
+    return {
+      vao: function (e, im) {
+        var b = doKhung()
+        napAnh(im)
+        tx = e.clientX - b.left
+        ty = e.clientY - b.top
+        if (str < 0.002) {
+          mx = tx
+          my = ty
+        }
+        trongKhung = true
+        cv.style.visibility = 'visible'
+        chay()
+      },
+      di: function (e) {
+        // Đo hộp theo SỰ KIỆN di chuột (không phải mỗi khung): canvas không làm
+        // bẩn layout nên phép đo rẻ, và đúng cả khi trang vừa cuộn.
+        var b = hop.getBoundingClientRect()
+        tx = e.clientX - b.left
+        ty = e.clientY - b.top
+      },
+      ra: function () {
+        trongKhung = false
+        chay()
+      },
+      // Sang cụm chữ khác: tắt NGAY, để ảnh mới mờ vào không bị canvas che.
+      tatNgay: function () {
+        trongKhung = false
+        str = 0
+        if (raf) cancelAnimationFrame(raf)
+        raf = 0
+        cv.style.visibility = 'hidden'
+      },
     }
   }
 
