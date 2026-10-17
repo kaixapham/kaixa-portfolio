@@ -64,16 +64,11 @@
 
     // ---------------------------------------------------------------- ảnh
     // Ảnh dự án MỌC TỪ GÓC DƯỚI-TRÁI, CẠNH VUÔNG (người dùng chốt): một hình
-    // chữ nhật neo ở góc đó, cạnh trên và cạnh phải chạy ra phủ khung khi vào,
-    // co về đúng góc đó khi rời.
+    // chữ nhật neo ở góc đó, cạnh trên và cạnh phải chạy ra phủ khung. Không
+    // bao giờ co về — ảnh mới mọc đè lên ảnh cũ.
     anhVaoMs: 700,
     anhVaoNhip: 'cubic-bezier(0.22, 1, 0.36, 1)',
-    // Co về CÙNG kiểu đường cong với lúc mọc (nhanh đầu, chậm cuối). Bản đầu
-    // dùng ease-in (chậm đầu, vọt cuối): khung gần như đứng yên rồi giật mạnh ở
-    // đoạn cuối — người dùng thấy "gần cuối lại đổi sang kiểu khác".
-    anhRaMs: 550,
-    anhRaNhip: 'cubic-bezier(0.22, 1, 0.36, 1)',
-    anhPhong: 1.08, // ảnh trong thu từ cỡ này về 1 khi lan vào
+    anhPhong: 1.08, // ảnh trong thu từ cỡ này về 1 khi mọc
     // --------------------------------------- thấu kính khi chuột TRONG ẢNH
     // Chỉ chạy khi con trỏ ở trong khung ảnh — rê chữ không kích hoạt.
     lens: true,
@@ -185,9 +180,9 @@
      * Cơ chế người dùng chốt:
      *   - Rê vào dự án: ảnh MỌC TỪ GÓC DƯỚI-TRÁI và CHẠY HẾT tới khi phủ đầy,
      *     kể cả khi con trỏ đã rời giữa chừng.
-     *   - Rê sang dự án khác (kể cả khi ảnh trước đang mọc dở): ảnh trước RÚT
-     *     RA NGAY — co về góc từ đúng chỗ đang dở — còn ảnh dự án mới mọc từ góc
-     *     đè lên. Lớp nào phủ đầy xong thì dọn mọi lớp bên dưới.
+     *   - Rê sang dự án khác (kể cả khi ảnh trước đang mọc dở): ảnh trước GIỮ
+     *     NGUYÊN, KHÔNG co về (người dùng chốt) — ảnh dự án mới mọc từ góc đè
+     *     lên. Lớp nào phủ đầy xong thì dọn mọi lớp bên dưới (đã bị che kín).
      *   - Rời danh sách: ảnh ĐỨNG YÊN, không co về (người dùng chốt) — ảnh chỉ
      *     đổi khi rê sang dự án khác. Nhờ vậy đưa con trỏ từ chữ vào khung ảnh
      *     thì thấu kính luôn bẻ đúng ảnh dự án vừa rê. */
@@ -205,25 +200,10 @@
       huy(l) // huỷ animation là về trạng thái nghỉ của CSS = ẩn
       l.day = false
     }
-    // Co một lớp về góc NGAY, nối tiếp từ trạng thái đang dở (đọc giá trị tính
-    // ra TRƯỚC khi huỷ animation đang chạy).
-    function coNgay(l) {
-      var cs = getComputedStyle(l.vo).clipPath
-      var ts = getComputedStyle(l.im).transform
-      huy(l)
-      l.day = false
-      var o = { duration: S.anhRaMs, easing: S.anhRaNhip, fill: 'forwards' }
-      l.a = l.vo.animate([{ clipPath: cs }, { clipPath: AN }], o)
-      l.b = l.im.animate([{ transform: ts === 'none' ? 'scale(1)' : ts }, { transform: 'scale(' + S.anhPhong + ')' }], o)
-      var a = l.a
-      a.onfinish = function () { if (l.a === a) datAn(l) }
-    }
     function hienAnh(i) {
       var l = lop[i]
       if (!l || i === dinh) return // đang mọc / đã phủ trên cùng: để nó chạy tiếp
       if (!l.im.src) l.im.src = l.im.dataset.src
-      // Ảnh dự án trước rút ra NGAY (người dùng chốt) — kể cả khi đang mọc dở.
-      if (dinh >= 0 && lop[dinh]) coNgay(lop[dinh])
       dinh = i
       huy(l)
       l.day = false
