@@ -68,8 +68,11 @@
     // co về đúng góc đó khi rời.
     anhVaoMs: 700,
     anhVaoNhip: 'cubic-bezier(0.22, 1, 0.36, 1)',
-    anhRaMs: 500,
-    anhRaNhip: 'cubic-bezier(0.55, 0, 0.75, 0.2)',
+    // Co về CÙNG kiểu đường cong với lúc mọc (nhanh đầu, chậm cuối). Bản đầu
+    // dùng ease-in (chậm đầu, vọt cuối): khung gần như đứng yên rồi giật mạnh ở
+    // đoạn cuối — người dùng thấy "gần cuối lại đổi sang kiểu khác".
+    anhRaMs: 550,
+    anhRaNhip: 'cubic-bezier(0.22, 1, 0.36, 1)',
     anhPhong: 1.08, // ảnh trong thu từ cỡ này về 1 khi lan vào
     // Rời chữ thì ảnh dự án còn giữ bấy nhiêu ms — đủ để đưa chuột từ chữ sang
     // khung ảnh mà ảnh không kịp về ảnh gốc.
@@ -186,9 +189,9 @@
      * Cơ chế người dùng chốt:
      *   - Rê vào dự án: ảnh MỌC TỪ GÓC DƯỚI-TRÁI và CHẠY HẾT tới khi phủ đầy,
      *     kể cả khi con trỏ đã rời giữa chừng.
-     *   - Đang mọc mà rê sang dự án khác: ảnh dự án mới mọc NGAY từ góc, đè lên
-     *     trên — không chờ ảnh trước xong, không co ảnh trước lại. Lớp nào phủ
-     *     đầy xong thì dọn (ẩn lặng lẽ) mọi lớp bên dưới.
+     *   - Rê sang dự án khác (kể cả khi ảnh trước đang mọc dở): ảnh trước RÚT
+     *     RA NGAY — co về góc từ đúng chỗ đang dở — còn ảnh dự án mới mọc từ góc
+     *     đè lên. Lớp nào phủ đầy xong thì dọn mọi lớp bên dưới.
      *   - Rời hẳn danh sách (không vào khung ảnh): đợi lớp trên cùng phủ đầy
      *     xong rồi mới co về góc, lộ lại ảnh gốc.
      * Rời chữ thì chờ `giuMs` mới xét co — để kịp đưa con trỏ vào khung ảnh
@@ -209,10 +212,25 @@
       huy(l) // huỷ animation là về trạng thái nghỉ của CSS = ẩn
       l.day = false
     }
+    // Co một lớp về góc NGAY, nối tiếp từ trạng thái đang dở (đọc giá trị tính
+    // ra TRƯỚC khi huỷ animation đang chạy).
+    function coNgay(l) {
+      var cs = getComputedStyle(l.vo).clipPath
+      var ts = getComputedStyle(l.im).transform
+      huy(l)
+      l.day = false
+      var o = { duration: S.anhRaMs, easing: S.anhRaNhip, fill: 'forwards' }
+      l.a = l.vo.animate([{ clipPath: cs }, { clipPath: AN }], o)
+      l.b = l.im.animate([{ transform: ts === 'none' ? 'scale(1)' : ts }, { transform: 'scale(' + S.anhPhong + ')' }], o)
+      var a = l.a
+      a.onfinish = function () { if (l.a === a) datAn(l) }
+    }
     function hienAnh(i) {
       var l = lop[i]
       if (!l || i === dinh) return // đang mọc / đã phủ trên cùng: để nó chạy tiếp
       if (!l.im.src) l.im.src = l.im.dataset.src
+      // Ảnh dự án trước rút ra NGAY (người dùng chốt) — kể cả khi đang mọc dở.
+      if (dinh >= 0 && lop[dinh]) coNgay(lop[dinh])
       dinh = i
       huy(l)
       l.day = false
