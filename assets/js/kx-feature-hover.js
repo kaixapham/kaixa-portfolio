@@ -12,8 +12,9 @@
  *         qua nhiều cụm là mỗi cụm sáng trọn rồi tắt dần lệch nhịp nhau: thành
  *         SÓNG nối đuôi con trỏ.
  *
- * ẢNH — mỗi dự án một lớp ảnh chồng trong khung ảnh gốc, MỜ DẦN vào / ra;
- * lớp mới nhất nằm trên. Rời hết thì lộ ảnh gốc của bản thiết kế bên dưới.
+ * ẢNH — mỗi dự án một lớp ảnh chồng trong khung ảnh gốc, LAN RA TỪ GÓC
+ * DƯỚI-TRÁI (clip-path tròn nở ra) khi vào, thu về góc đó khi rời; lớp mới
+ * nhất nằm trên. Rời hết thì lộ ảnh gốc của bản thiết kế bên dưới.
  * Ảnh có chỗ cố định giữa cụm theo bản thiết kế (không bám con trỏ).
  * Đã thử kiểu mở / cắt bằng clip-path (ảnh mở từ trên xuống, rời thì cắt
  * dần) — người dùng chốt BỎ: chuyển cụm nhanh là khung ảnh loang lổ hai ba
@@ -62,7 +63,15 @@
     raNhip: 'cubic-bezier(0.61, 1, 0.88, 1)', // sine.out
 
     // ---------------------------------------------------------------- ảnh
-    anhMs: 280, // ms — ảnh dự án mờ dần vào / ra
+    // Ảnh dự án LAN RA TỪ GÓC DƯỚI-TRÁI (người dùng chốt): clip-path tròn tâm
+    // ở góc đó nở ra phủ khung khi vào, thu về đúng góc đó khi rời.
+    anhGocX: 0, // % — tâm vòng lan (0 0 = trên-trái, 0 100 = dưới-trái)
+    anhGocY: 100,
+    anhVaoMs: 700,
+    anhVaoNhip: 'cubic-bezier(0.22, 1, 0.36, 1)',
+    anhRaMs: 500,
+    anhRaNhip: 'cubic-bezier(0.55, 0, 0.75, 0.2)',
+    anhPhong: 1.08, // ảnh trong thu từ cỡ này về 1 khi lan vào
     // Rời chữ thì ảnh dự án còn giữ bấy nhiêu ms — đủ để đưa chuột từ chữ sang
     // khung ảnh mà ảnh không kịp về ảnh gốc.
     giuMs: 450,
@@ -124,8 +133,15 @@
       '.kx-page p.kx-fh.is-on::before{transition:transform ' + VAO + '}',
       '.kx-page p.kx-fh.is-day,.kx-page p.kx-fh.is-day::before{transition:none}',
       // Lớp ảnh dự án: mờ dần vào / ra.
-      '.kx-page .kx-fh-anh{position:absolute;inset:0;overflow:hidden;opacity:0;pointer-events:none;transition:opacity ' + S.anhMs + 'ms ease}',
-      '.kx-page .kx-fh-anh.is-on{opacity:1}',
+      // Lớp ảnh dự án: vòng tròn tâm ở góc dưới-trái nở ra (vào) / thu về (ra).
+      // Mọi lớp chung MỘT tâm nên chuyển nhanh chỉ là các vòng đồng tâm chồng
+      // nhau — không loang lổ như kiểu mở/cắt theo hai phía đã bỏ.
+      // 150% của circle() tính theo đường chéo khung chia √2 → đủ phủ góc xa nhất.
+      '.kx-page .kx-fh-anh{position:absolute;inset:0;overflow:hidden;pointer-events:none;',
+      '  clip-path:circle(0% at ' + S.anhGocX + '% ' + S.anhGocY + '%);transition:clip-path ' + S.anhRaMs + 'ms ' + S.anhRaNhip + '}',
+      '.kx-page .kx-fh-anh.is-on{clip-path:circle(150% at ' + S.anhGocX + '% ' + S.anhGocY + '%);transition:clip-path ' + S.anhVaoMs + 'ms ' + S.anhVaoNhip + '}',
+      '.kx-page .kx-fh-anh img{transform:scale(' + S.anhPhong + ');transform-origin:' + S.anhGocX + '% ' + S.anhGocY + '%;transition:transform ' + S.anhRaMs + 'ms ' + S.anhRaNhip + '}',
+      '.kx-page .kx-fh-anh.is-on img{transform:scale(1);transition:transform ' + S.anhVaoMs + 'ms ' + S.anhVaoNhip + '}',
     ].join('\n')
     document.head.appendChild(st)
 
