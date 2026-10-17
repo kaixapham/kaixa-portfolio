@@ -233,3 +233,7 @@
 .kx-page .k6f{background-color:#fff;align-content:stretch;display:flex;align-items:flex-start;padding:calc(16 * var(--px));position:relative;border-radius:calc(4 * var(--px));flex-shrink:0;width:calc(48 * var(--px));height:calc(48 * var(--px))}
 .kx-page .k6g{position:relative;flex-shrink:0;width:calc(16 * var(--px));height:calc(16 * var(--px))}
 .kx-page .k6h{position:absolute;inset:calc(30% - calc(0.4 * var(--px)))}
+@media (min-aspect-ratio: 1841/1000) {
+  .kx-page [data-n="270:2462"]{flex-direction:row;align-items:flex-end;column-gap:calc(42.1 * var(--px));width:auto;top:calc(248.5 * var(--px))}
+  .kx-page [data-n="1:199"]{order:-1;width:calc(273 * var(--px))}
+}
