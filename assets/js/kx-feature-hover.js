@@ -72,11 +72,13 @@
     // --------------------------------------- thấu kính khi chuột TRONG ẢNH
     // Chỉ chạy khi con trỏ ở trong khung ảnh — rê chữ không kích hoạt.
     lens: true,
-    lensR: 0.34, // bán kính thấu kính, phần bề rộng khung ảnh
-    lensZoom: 0.45, // độ phóng ở tâm
-    lensDisp: 5, // px — tách đỏ/lam sát viền
-    lensWave: 0.06, // viền gợn theo tiếp tuyến (phần bán kính)
-    lensRim: 0.7, // viền sáng + quầng
+    // Kính bám 4 MÉP khung ảnh, không phải vòng tròn theo con trỏ.
+    lensBand: 0.18, // độ sâu dải kính tính từ mép, phần cạnh ngắn của khung
+    lensBend: 20, // px — hình sát mép bị bẻ vào trong bao nhiêu
+    lensZoom: 0.04, // phóng nhẹ cả tấm về phía con trỏ
+    lensDisp: 4, // px — tách đỏ/lam sát mép
+    lensWave: 0.08, // gợn dọc theo mép (phần độ sâu dải)
+    lensRim: 0.8, // viền sáng + quầng
     lensColor: '#009dff',
     lensMuot: 0.2, // 0..1 — thấu kính đuổi theo con trỏ mỗi khung 60fps
     lensVao: 0.12, // 0..1 — tốc độ hiện / tắt thấu kính mỗi khung
@@ -271,19 +273,24 @@
 
   /* ============================================================ THẤU KÍNH
    * Canvas WebGL2 phủ đúng khung ảnh, chỉ dựng khi con trỏ vào khung lần
-   * đầu. Vẽ lại CHÍNH ảnh đang hiện (object-fit: cover, giữa) nên lúc thấu
-   * kính chưa hiện thì canvas trùng khít ảnh — bật canvas lên không có cú
-   * chớp. Thấu kính: phóng ở tâm, viền gợn theo tiếp tuyến, tách đỏ/lam sát
-   * viền, viền sáng + quầng màu — cùng ngôn ngữ với kính lỏng của Works.
-   * Vòng vẽ chỉ chạy khi thấu kính đang hiện hoặc đang tắt dần. Không viết
-   * dấu huyền trong khối GLSL (luật số 4). */
+   * đầu. Vẽ lại CHÍNH ảnh đang hiện (object-fit: cover, giữa) nên lúc kính
+   * chưa hiện thì canvas trùng khít ảnh — bật canvas lên không có cú chớp.
+   *
+   * Kính KHÔNG phải vòng tròn theo con trỏ (người dùng chốt): cả tấm ảnh là
+   * một phiến kính, bám theo đúng 4 MÉP của khung. Mô tả mép bằng hàm khoảng
+   * cách hình chữ nhật, góc vát theo cung tròn — càng sát mép, hình bên dưới càng
+   * bị bẻ, gợn dọc theo mép và tách đỏ/lam theo pháp tuyến; viền sáng + quầng
+   * màu chạy quanh cả 4 cạnh. Con trỏ chỉ phóng nhẹ hình về phía nó và làm
+   * viền gần nó sáng hơn — như nghiêng tấm kính.
+   * Vòng vẽ chỉ chạy khi kính đang hiện hoặc đang tắt dần. Không viết dấu
+   * huyền trong khối GLSL (luật số 4). */
   var VERT = '#version 300 es\nin vec2 p;\nvoid main(){ gl_Position = vec4(p, 0.0, 1.0); }'
   var FRAG = [
     '#version 300 es',
     'precision highp float;',
     'uniform sampler2D uT;',
-    'uniform vec2 uRes, uImg, uM;', // khung (px css), cỡ gốc ảnh, tâm thấu kính (px css)
-    'uniform float uDpr, uR, uZoom, uDisp, uWave, uRim, uStr, uTime;',
+    'uniform vec2 uRes, uImg, uM;', // khung (px css), cỡ gốc ảnh, con trỏ (px css)
+    'uniform float uDpr, uBand, uBend, uZoom, uDisp, uWave, uRim, uStr, uTime;',
     'uniform vec3 uCol;',
     'out vec4 o;',
     'vec3 anh(vec2 p){',
@@ -297,21 +304,34 @@
     'void main(){',
     '  vec2 p = vec2(gl_FragCoord.x, uRes.y * uDpr - gl_FragCoord.y) / uDpr;',
     '  vec3 col = anh(p);',
-    '  vec2 d = p - uM;',
-    '  float nd = length(d) / max(uR, 1.0);',
-    '  if (uStr > 0.001 && nd < 1.0) {',
-    '    vec2 dir = d / max(length(d), 1e-4);',
-    '    vec2 tn = vec2(-dir.y, dir.x);',
-    '    float ang = atan(d.y, d.x);',
-    '    float k = uZoom * uStr * (1.0 - nd * nd);', // phóng mạnh nhất ở tâm
-    '    float rimS = smoothstep(0.55, 1.0, nd);',
-    '    vec2 sv = uM + d * (1.0 - k) + tn * sin(ang * 2.0 + uTime * 1.2) * uWave * uR * rimS * uStr;',
-    '    float dsp = uDisp * uStr * smoothstep(0.4, 1.0, nd);',
-    '    vec3 c = vec3(anh(sv + dir * dsp).r, anh(sv).g, anh(sv - dir * dsp).b);',
-    '    float rim = exp(-pow((nd - 0.97) / 0.025, 2.0)) * uRim * uStr;',
-    '    float aura = exp(-pow((nd - 0.9) / 0.08, 2.0)) * 0.35 * uRim * uStr;',
-    '    c += vec3(rim) + uCol * aura;',
-    '    col = mix(col, c, smoothstep(1.0, 0.985, nd));',
+    '  if (uStr > 0.001) {',
+    '    vec2 c = uRes * 0.5;',
+    '    vec2 rel = p - c;',
+    '    vec2 sg = vec2(rel.x < 0.0 ? -1.0 : 1.0, rel.y < 0.0 ? -1.0 : 1.0);',
+    '    vec2 ad = abs(rel);',
+    '    float band = clamp(uBand * min(uRes.x, uRes.y), 1.0, min(c.x, c.y) * 0.95);',
+    '    float e = min(c.x - ad.x, c.y - ad.y);', // khoảng cách vào trong tính từ mép VUÔNG (cho viền sáng)
+    // Độ sâu kính ở góc đi theo cung tròn bán kính = dải kính: sát góc vát
+    // tròn, không có nếp gập chéo nơi hai cạnh gặp nhau.
+    '    vec2 q2 = ad - (c - band);',
+    '    float eR = band - length(max(q2, 0.0));',
+    '    vec2 g;', // pháp tuyến hướng ra mép, xoay đều quanh góc
+    '    if (q2.x > 0.0 && q2.y > 0.0) g = normalize(q2) * sg;',
+    '    else if (q2.x > q2.y) g = vec2(sg.x, 0.0);',
+    '    else g = vec2(0.0, sg.y);',
+    '    vec2 tn = vec2(-g.y, g.x);',
+    '    float t = clamp(1.0 - eR / band, 0.0, 1.0);',
+    '    float w = t * t * (3.0 - 2.0 * t);', // vát mềm, không gập cục
+    '    float gon = sin(dot(p, tn) * 6.2832 / band + uTime * 1.2);',
+    '    vec2 sv = p - g * uBend * w * uStr + tn * gon * uWave * band * w * w * uStr;',
+    '    sv = uM + (sv - uM) * (1.0 - uZoom * uStr);', // phóng nhẹ về phía con trỏ
+    '    float dsp = uDisp * w * uStr;',
+    '    vec3 k = vec3(anh(sv - g * dsp).r, anh(sv).g, anh(sv + g * dsp).b);',
+    '    float gan = 0.55 + 0.45 * exp(-length(p - uM) / (min(uRes.x, uRes.y) * 0.5));', // viền gần con trỏ sáng hơn
+    '    float rim = exp(-pow((e - 1.5) / 1.2, 2.0)) * uRim * gan;',
+    '    float aura = exp(-e / (band * 0.35)) * 0.35 * uRim * gan;',
+    '    k += vec3(rim) + uCol * aura;',
+    '    col = mix(col, k, uStr);',
     '  }',
     '  o = vec4(col, 1.0);',
     '}',
@@ -347,7 +367,7 @@
     gl.enableVertexAttribArray(0)
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
     var U = {}
-    ;['uT', 'uRes', 'uImg', 'uM', 'uDpr', 'uR', 'uZoom', 'uDisp', 'uWave', 'uRim', 'uStr', 'uTime', 'uCol'].forEach(function (n) {
+    ;['uT', 'uRes', 'uImg', 'uM', 'uDpr', 'uBand', 'uBend', 'uZoom', 'uDisp', 'uWave', 'uRim', 'uStr', 'uTime', 'uCol'].forEach(function (n) {
       U[n] = gl.getUniformLocation(prog, n)
     })
     gl.uniform1i(U.uT, 0)
@@ -405,7 +425,8 @@
       gl.uniform2f(U.uImg, anhNay.naturalWidth || 1, anhNay.naturalHeight || 1)
       gl.uniform2f(U.uM, mx, my)
       gl.uniform1f(U.uDpr, dpr)
-      gl.uniform1f(U.uR, S.lensR * W)
+      gl.uniform1f(U.uBand, S.lensBand)
+      gl.uniform1f(U.uBend, S.lensBend)
       gl.uniform1f(U.uZoom, S.lensZoom)
       gl.uniform1f(U.uDisp, S.lensDisp)
       gl.uniform1f(U.uWave, S.lensWave)
