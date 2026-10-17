@@ -74,10 +74,6 @@
     anhRaMs: 550,
     anhRaNhip: 'cubic-bezier(0.22, 1, 0.36, 1)',
     anhPhong: 1.08, // ảnh trong thu từ cỡ này về 1 khi lan vào
-    // Rời chữ thì ảnh dự án còn giữ bấy nhiêu ms — đủ để đưa chuột từ chữ sang
-    // khung ảnh mà ảnh không kịp về ảnh gốc.
-    giuMs: 450,
-
     // --------------------------------------- thấu kính khi chuột TRONG ẢNH
     // Chỉ chạy khi con trỏ ở trong khung ảnh — rê chữ không kích hoạt.
     lens: true,
@@ -192,16 +188,13 @@
      *   - Rê sang dự án khác (kể cả khi ảnh trước đang mọc dở): ảnh trước RÚT
      *     RA NGAY — co về góc từ đúng chỗ đang dở — còn ảnh dự án mới mọc từ góc
      *     đè lên. Lớp nào phủ đầy xong thì dọn mọi lớp bên dưới.
-     *   - Rời hẳn danh sách (không vào khung ảnh): đợi lớp trên cùng phủ đầy
-     *     xong rồi mới co về góc, lộ lại ảnh gốc.
-     * Rời chữ thì chờ `giuMs` mới xét co — để kịp đưa con trỏ vào khung ảnh
-     * (thấu kính bẻ đúng ảnh dự án đó). */
+     *   - Rời danh sách: ảnh ĐỨNG YÊN, không co về (người dùng chốt) — ảnh chỉ
+     *     đổi khi rê sang dự án khác. Nhờ vậy đưa con trỏ từ chữ vào khung ảnh
+     *     thì thấu kính luôn bẻ đúng ảnh dự án vừa rê. */
     var AN = 'inset(100% 100% 0% 0%)'
     var HIEN = 'inset(0% 0% 0% 0%)'
     var z = 10
     var dinh = -1 // lớp đang trên cùng (đang mọc hoặc đã phủ)
-    var dangTren = 0 // số cụm chữ con trỏ đang ở trong
-    var trongKhung = false
 
     function huy(l) {
       if (l.a) l.a.cancel()
@@ -246,28 +239,8 @@
         if (dinh === i) lop.forEach(function (x, j) { if (x && j !== i) datAn(x) })
       }
     }
-    // Co lớp trên cùng về góc — chỉ khi nó đã phủ đầy; đang mọc thì đợi xong.
-    function coVe() {
-      if (dinh < 0) return
-      var i = dinh
-      var l = lop[i]
-      var lam = function () {
-        if (dinh !== i || dangTren || trongKhung) return // lại có người rê vào
-        dinh = -1
-        huy(l)
-        var o = { duration: S.anhRaMs, easing: S.anhRaNhip, fill: 'forwards' }
-        l.a = l.vo.animate([{ clipPath: HIEN }, { clipPath: AN }], o)
-        l.b = l.im.animate([{ transform: 'scale(1)' }, { transform: 'scale(' + S.anhPhong + ')' }], o)
-        var a = l.a
-        a.onfinish = function () { if (l.a === a) datAn(l) }
-      }
-      if (l.day || !l.a) lam()
-      else l.a.finished.then(lam, function () {})
-    }
-
     /* ------------------------------------------------------- vào / ra */
     function vao(i) {
-      dangTren++
       if (kinh) kinh.tatNgay()
       chu[i].forEach(function (p) {
         p.classList.remove('is-day')
@@ -276,7 +249,6 @@
       hienAnh(i)
     }
     function ra(i) {
-      dangTren = Math.max(0, dangTren - 1)
       var ps = chu[i]
       // Ép đầy ngay (không transition) rồi mới thả cho transition RA chạy.
       ps.forEach(function (p) {
@@ -285,9 +257,6 @@
       })
       void ps[0].offsetWidth // chốt trạng thái đầy trước khi thả
       ps.forEach(function (p) { p.classList.remove('is-day') })
-      setTimeout(function () {
-        if (!dangTren && !trongKhung) coVe()
-      }, S.giuMs)
     }
 
     function noi(cum, i) {
@@ -303,7 +272,6 @@
     /* ------------------------------------------------------- khung ảnh */
     var kinh = null
     hop.addEventListener('pointerenter', function (e) {
-      trongKhung = true // giữ ảnh đang hiện cho thấu kính
       if (!S.lens) return
       if (!kinh) kinh = dungKinh(hop)
       if (kinh) kinh.vao(e, anhDangHien())
@@ -312,9 +280,7 @@
       if (kinh) kinh.di(e)
     })
     hop.addEventListener('pointerleave', function () {
-      trongKhung = false
       if (kinh) kinh.ra()
-      if (!dangTren) coVe()
     })
     // Ảnh đang trên cùng (đang mọc hoặc đã phủ), không có thì ảnh gốc.
     function anhDangHien() {
