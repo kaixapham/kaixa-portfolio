@@ -128,9 +128,50 @@
   /* Màn đầu Home cao ĐÚNG MỘT viewport (generator: `hero` 1080) — mọi thứ dưới
    * nó dời theo 100svh. stripY / headerY vẫn khai bằng toạ độ trang của bản
    * thiết kế; quy sang CSS bằng hàm này. */
-  var HERO = 1080
-  function yTrang(y) {
-    return y >= HERO ? 'calc(100svh + ' + (y - HERO) + ' * var(--px))' : px(y)
+  /* Toạ độ dọc px thiết kế → CSS, CÙNG công thức với yTrang() của
+   * tools/figma-to-html.mjs: màn đầu + các khúc "một màn" (bảng nằm ở data-man
+   * trên .kx-page). Node trong khúc neo trên / giữa / đáy (`neo`). Không có bảng
+   * thì coi như chỉ có màn đầu 1080. */
+  var KHUC = null
+  function cacKhuc() {
+    if (KHUC) return KHUC
+    var p = document.querySelector('.kx-page')
+    try {
+      KHUC = JSON.parse((p && p.dataset.man) || 'null')
+    } catch (e) {}
+    if (!KHUC) KHUC = [{ tu: 0, den: 1080, chiTren: true }]
+    return KHUC
+  }
+  function cssY(svh, n) {
+    n = Math.round(n * 100) / 100
+    return svh ? 'calc(' + svh + 'svh + ' + n + ' * var(--px))' : px(n)
+  }
+  // `them`: cộng thêm px thiết kế SAU khi neo — để neo theo TÂM một khối rồi
+  // lùi nửa chiều cao (đỉnh khối có thể nằm ngoài khúc, tâm thì nằm trong).
+  function yTrang(y, neo, them) {
+    them = them || 0
+    var svh = 0
+    var qua = 0
+    var ds = cacKhuc()
+    for (var i = 0; i < ds.length; i++) {
+      var m = ds[i]
+      var H = m.den - m.tu
+      if (y >= m.den) {
+        svh += 100
+        qua += H
+        continue
+      }
+      if (y >= m.tu) {
+        var loc = y - m.tu
+        var goc = m.tu - qua
+        var n = m.chiTren ? 'tren' : neo || (loc < H * 0.3 ? 'tren' : loc > H * 0.6 ? 'duoi' : 'giua')
+        if (n === 'tren') return cssY(svh, goc + loc + them)
+        if (n === 'giua') return cssY(svh + 50, goc + loc - H / 2 + them)
+        return cssY(svh + 100, goc + loc - H + them)
+      }
+      break
+    }
+    return cssY(svh, y - qua + them)
   }
 
   var W0 = 3400 // bề rộng khung xoay (px thiết kế) — đủ phủ góc màn hình khi nghiêng
@@ -165,7 +206,7 @@
     var mask = 'linear-gradient(to right,transparent var(--kx-ls-l),#000 var(--kx-ls-l),#000 calc(100% - var(--kx-ls-l)),transparent calc(100% - var(--kx-ls-l)))'
     return [
       // .kx-ls cao đúng vùng dải (không còn cao 0) để mask-image của kính ăn đúng.
-      '.kx-page .kx-ls{position:absolute;left:0;width:100%;top:' + yTrang(S.stripY - H / 2) + ';height:' + px(H) + ';pointer-events:none}',
+      '.kx-page .kx-ls{position:absolute;left:0;width:100%;top:' + yTrang(S.stripY, 'giua', -H / 2) + ';height:' + px(H) + ';pointer-events:none}',
       '.kx-page .kx-ls.is-kinh{-webkit-mask-image:' + mask + ';mask-image:' + mask + '}',
       '.kx-page .kx-ls__xoay{position:absolute;left:50%;top:50%;width:' + px(W0) + ';',
       '  transform:translate(-50%,-50%) rotate(' + S.tilt + 'deg)}',
@@ -212,7 +253,7 @@
 
   function dungDau() {
     var d = el('div', 'kx-ls-dau')
-    d.style.top = yTrang(S.headerY)
+    d.style.top = yTrang(S.headerY, 'tren')
     // Khối cuối mỗi cụm trải tới trước cụm kế tiếp, để chữ dài không bị cắt.
     d.appendChild(cot(el('div', null, S.name), S.colName, S.colStatus - S.colName))
     d.appendChild(cot(el('div', null, S.status), S.colStatus, S.colServices - S.colStatus))
@@ -577,7 +618,7 @@
       var H = caoVung()
       var cssH = H * K.k
       K.ratio = Math.min(window.devicePixelRatio || 1, 2, S.lensMaxPx / Math.max(1, cssW, cssH))
-      cv.style.top = yTrang(S.stripY - H / 2)
+      cv.style.top = yTrang(S.stripY, 'giua', -H / 2)
       cv.style.height = px(H)
       // Đỉnh canvas trong trang (px css) — ĐO, không suy từ stripY: màn đầu
       // cao theo viewport nên toạ độ thật lệch bản thiết kế 100svh - 1080.

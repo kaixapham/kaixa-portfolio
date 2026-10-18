@@ -49,7 +49,7 @@ const CONFIG = {
    * vào dòng này. false = KHÔNG dựng three.js (không tốn GPU, không tải deck),
    * ảnh phẳng của Figma hiện lại như bản thiết kế. Khác `enabled`: tắt
    * `enabled` là bỏ hẳn file này, không còn công tắc nào để bật lại. */
-  hien: true,
+  hien: false,
   anchor: '9:3529', // node Figma của ô đĩa phẳng — dùng để suy vị trí mặc định
   hideFlat: true, // false = để lộ cả ảnh phẳng lẫn 3D, tiện so khi chỉnh
   /* Những node PHẲNG mà máy 3D thay thế — giấu hết, không thì trang có đầy
