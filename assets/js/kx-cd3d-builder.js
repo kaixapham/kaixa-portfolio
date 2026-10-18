@@ -49,10 +49,12 @@
 
   // Các ô số của một mốc. `nhan` là chữ hiện trên bảng.
   var O = [
-    { key: 'at', nhan: 'Cuộn tới (0–1)', buoc: 0.01, min: 0, max: 1 },
-    { key: 'w', nhan: 'Cạnh ô vẽ', buoc: 10, min: 200, max: 2000 },
-    { key: 'x', nhan: 'Trái (x)', buoc: 5, min: -1200, max: 2400 },
-    { key: 'y', nhan: 'Trên (y)', buoc: 5, min: -1200, max: 1600 },
+    // Mốc NEO vào phần tử trang (xem MOC trong kx-cd3d.js): `ny` quyết định
+    // mốc nằm ở vị trí cuộn nào — tâm phần tử neo lệch giữa màn bấy nhiêu.
+    { key: 'ny', nhan: 'Neo lệch giữa màn', buoc: 5, min: -4000, max: 4000 },
+    { key: 'w', nhan: 'Cạnh ô vẽ', buoc: 10, min: 200, max: 2400 },
+    { key: 'x', nhan: 'Trái (từ mép trang)', buoc: 5, min: -1600, max: 3000 },
+    { key: 'y', nhan: 'Trên (từ tâm neo)', buoc: 5, min: -3000, max: 3000 },
     { key: 'dist', nhan: 'Camera lùi', buoc: 0.5, min: 6, max: 90 },
     { key: 'rotX', nhan: 'Ngả trước/sau', buoc: 1, min: -180, max: 180 },
     { key: 'rotY', nhan: 'Xoay dọc (90=cạnh)', buoc: 1, min: -180, max: 180 },
@@ -79,6 +81,22 @@
     '  border-left:1px solid rgba(57,255,20,.28);border-right:1px solid rgba(57,255,20,.28)}',
     '.kx-cdb-luoi__hang{position:absolute;left:0;right:0;height:0;border-top:1px dashed rgba(57,255,20,.32)}',
     '.kx-cdb__hai{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:9px}',
+    '.kx-cdb-bao{position:fixed;left:50%;bottom:24px;z-index:2147483100;transform:translate(-50%,8px);',
+    '  max-width:min(640px,90vw);padding:8px 12px;border:1px solid #2a2a2c;border-radius:6px;background:#0b0b0c;',
+    '  font:400 11px/1.45 "Geist Mono",ui-monospace,monospace;color:#e8e8e8;pointer-events:none;opacity:0;',
+    '  transition:opacity .2s ease,transform .2s ease;box-shadow:0 10px 30px rgba(0,0,0,.6)}',
+    '.kx-cdb-bao.is-on{opacity:1;transform:translate(-50%,0)}',
+    '.kx-cdb button.is-chua{background:#4a7dff;border-color:#4a7dff;color:#fff}',
+    '.kx-cdb__man{display:grid;grid-template-columns:52px repeat(4,1fr);gap:4px;margin-bottom:4px;align-items:center}',
+    '.kx-cdb__man span{color:#8e8e94;font-size:10px}',
+    '.kx-cdb__man button{padding:5px 2px;font-size:10px}',
+    // Chọn phần tử trên trang: khung xanh bám phần tử dưới con trỏ + nhãn góc / neo.
+    'html.kx-cdb-dang-chon, html.kx-cdb-dang-chon *{cursor:crosshair!important}',
+    '.kx-cdb-chon{position:fixed;z-index:2147483000;pointer-events:none;outline:1px solid #39ff14;',
+    '  box-shadow:0 0 0 1px rgba(57,255,20,.35),0 0 14px rgba(57,255,20,.4)}',
+    '.kx-cdb-chon[hidden]{display:none}',
+    '.kx-cdb-chon::after{content:attr(data-goc);position:absolute;left:0;top:-18px;padding:1px 5px;',
+    '  font:500 10px/1.3 "Geist Mono",monospace;color:#0b0b0c;background:#39ff14;white-space:nowrap}',
     '.kx-cdb__lat{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:9px}',
     '.kx-cdb__lat button{padding:5px 2px;font-size:10px}',
     '.kx-cdb__lat button:last-child{grid-column:1 / -1}',
@@ -103,6 +121,7 @@
     '.kx-cdb .kx-cdb__cong{margin-bottom:9px}',
     '.kx-cdb .kx-cdb__cong button{width:100%;padding:7px 6px;text-align:left;text-transform:uppercase;letter-spacing:.03em}',
     '.kx-cdb .kx-cdb__cong .kx-cdb__note{margin-top:4px}',
+    '.kx-cdb .kx-cdb__cong .kx-cdb__editor{margin-top:4px}',
     '.kx-cdb button.is-now{box-shadow:inset 0 0 0 1px #4a7dff}',
     '.kx-cdb__row{display:flex;align-items:center;gap:6px;margin-bottom:5px}',
     '.kx-cdb__row label{flex:1;color:#8e8e94}',
@@ -148,6 +167,15 @@
   var oOut = null
   var svg = null
   var cheDo = 'move' // 'move' | 'rotate' | 'scale'
+  var oGoc = null // ô "Nghiêng trên màn"
+  var nutLuu = null
+  // Bản nháp khác bản đã lưu: nút Lưu sáng xanh + chữ "chưa lưu", không thì
+  // tải lại trang là mất mà không hay.
+  function datChua(chua) {
+    if (!nutLuu) return
+    nutLuu.classList.toggle('is-chua', !!chua)
+    nutLuu.textContent = chua ? 'Lưu · chưa lưu' : 'Lưu'
+  }
 
   function el(tag, cls, chu) {
     var e = document.createElement(tag)
@@ -278,6 +306,10 @@
       m.dist = dist
       doi++
     })
+    if (!doi) {
+      nhay('Cả ' + day.length + ' mốc đã cùng cỡ (cạnh ' + w + ', lùi ' + dist + ') — đổi cỡ ở mốc này trước rồi bấm lại')
+      return
+    }
     apNgay()
     veLaiO()
     nhay('Đồng bộ cỡ ' + doi + '/' + day.length + ' mốc → cạnh ' + w + ', lùi ' + dist + ' — bấm Lưu để giữ')
@@ -447,15 +479,15 @@
     return Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
   }
 
-  // Mốc ở ngay vị trí cuộn hiện tại (trong `ganMoc` px), hoặc -1.
+  // Mốc ở ngay vị trí cuộn hiện tại (trong `ganMoc` px), hoặc -1. Vị trí
+  // cuộn của mốc TÍNH theo neo ở cỡ màn hiện tại (`cd.cuonMoc`).
   function mocTaiDay() {
-    var p = cd.tienDo()
-    var dung = (CONFIG.ganMoc || 0) / tran()
+    var sy = window.scrollY
     var tot = -1
     var lech = Infinity
     day.forEach(function (m, i) {
-      var d = Math.abs(m.at - p)
-      if (d <= dung && d < lech) {
+      var d = Math.abs(cd.cuonMoc(m) - sy)
+      if (d <= (CONFIG.ganMoc || 0) && d < lech) {
         lech = d
         tot = i
       }
@@ -466,24 +498,35 @@
   // Tư thế đang hiện ở vị trí cuộn này.
   function tuTheNay() {
     var i = mocTaiDay()
-    return i >= 0 ? day[i] : cd.tuTheTai(day, cd.tienDo())
+    return i >= 0 ? day[i] : cd.tuTheTai(null, window.scrollY)
   }
 
-  // Mốc để sửa: có sẵn tại chỗ thì dùng, chưa có thì sinh ra ngay tại đây.
-  function mocDeSua() {
+  function xepDay() {
+    day.forEach(function (m) {
+      cd.cuonMoc(m)
+    })
+    day.sort(function (a, b) {
+      return a._s - b._s
+    })
+  }
+
+  // Mốc để sửa: có sẵn tại chỗ thì dùng, chưa có thì sinh ra ngay tại đây
+  // (neo vào phần tử gần tâm máy nhất, hoặc `neo` truyền vào).
+  function mocDeSua(neo) {
     var i = mocTaiDay()
     if (i < 0) {
-      var p = +cd.tienDo().toFixed(4)
-      var m = Object.assign({}, cd.tuTheTai(day, p), { at: p })
+      var m = cd.taoMoc(neo)
+      if (!m) {
+        nhay('Không tìm được phần tử nào để neo ở đây')
+        return null
+      }
       day.push(m)
-      day.sort(function (a, b) {
-        return a.at - b.at
-      })
+      xepDay()
       i = day.indexOf(m)
       apNgay()
       veLaiMoc()
       veDuongMoc()
-      nhay('Tạo mốc mới ở ' + p + ' — nhớ bấm Lưu')
+      nhay('Tạo mốc mới, neo vào ' + m.neo + ' — nhớ bấm Lưu')
     }
     return day[i]
   }
@@ -503,12 +546,12 @@
     hangMoc.appendChild(el('p', 'kx-cdb__moc-ten', 'Mốc (bấm để cuộn tới) — cuộn tới đâu chỉnh tới đó'))
     var here = mocTaiDay()
     day.forEach(function (m, i) {
-      var b = el('button', null, m.at.toFixed(2))
+      var b = el('button', null, (cd.cuonMoc(m) / tran()).toFixed(2))
       b.type = 'button'
-      b.title = 'Cuộn tới mốc ở ' + m.at
+      b.title = 'Cuộn tới mốc neo vào ' + m.neo
       b.classList.toggle('is-on', i === here)
       b.addEventListener('click', function () {
-        cuonToi(Math.round(m.at * tran()))
+        cuonToi(Math.round(cd.cuonMoc(m)))
       })
       hangMoc.appendChild(b)
     })
@@ -542,8 +585,9 @@
     var t = tran()
     day.forEach(function (m) {
       var ke = el('div', 'kx-cdb-man__ke')
-      ke.style.top = Math.round(m.at * t) + 'px'
-      ke.appendChild(el('span', 'kx-cdb-man__so', 'MỐC ' + m.at.toFixed(2)))
+      var sy = cd.cuonMoc(m)
+      ke.style.top = Math.round(sy) + 'px'
+      ke.appendChild(el('span', 'kx-cdb-man__so', 'MỐC ' + (sy / t).toFixed(2) + ' · neo ' + m.neo))
       lopMoc.appendChild(ke)
     })
   }
@@ -551,39 +595,38 @@
   function veLaiO() {
     var m = tuTheNay()
     if (!m) return
+    if (oGoc && document.activeElement !== oGoc) oGoc.value = gocManHinh(m).toFixed(1)
     var co = mocTaiDay() >= 0
     O.forEach(function (o) {
       if (document.activeElement !== oInput[o.key]) {
-        var v = o.key === 'at' && !co ? cd.tienDo() : m[o.key]
-        oInput[o.key].value = v == null ? 0 : Math.round(v * 1000) / 1000
+        var v = m[o.key]
+        oInput[o.key].value = v == null ? '' : Math.round(v * 1000) / 1000
       }
     })
   }
 
   function veLaiNote() {
-    var now = vpHienTai()
-    var lech = now !== vpDangSua
     var co = mocTaiDay() >= 0
     note.innerHTML =
       '<b>Cửa sổ:</b> ' +
       window.innerWidth +
-      'px → ' +
-      now +
+      '×' +
+      window.innerHeight +
+      ' — một dãy mốc chung cho mọi cỡ màn' +
       '<br><b>Cuộn hiện tại:</b> ' +
       cd.tienDo().toFixed(3) +
-      (co ? ' — <b>có mốc tại đây</b>, chỉnh là sửa mốc này' : ' — chưa có mốc, chỉnh là tạo mốc mới') +
-      '<br><b>Gizmo:</b> G di chuyển · R xoay · S phóng · Shift bắt nấc' +
-      (lech
-        ? '<br><b style="color:#d8a24a">Đang chỉnh ' +
-          vpDangSua +
-          '</b>, không phải viewport hiện tại.'
-        : '')
+      (co
+        ? ' — <b>có mốc tại đây</b>, neo <b>' + tuTheNay().neo + '</b> (' + tenNeo(tuTheNay().neo) + ')'
+        : ' — chưa có mốc, chỉnh là tạo mốc mới') +
+      '<br><b>Nghiêng trên màn:</b> ' + gocManHinh().toFixed(1) + '°' +
+      '<br><b>Gizmo:</b> G di chuyển · R xoay · S phóng · Shift bắt nấc'
   }
 
   /* ------------------------------------------------------------- thao tác */
 
   /* Đẩy dãy đang sửa sang máy — máy vẫn chạy theo cuộn, KHÔNG ép tư thế. */
   function apNgay() {
+    datChua(true)
     cd.datDay(day)
   }
 
@@ -591,7 +634,7 @@
   function tuO() {
     var m = mocDeSua()
     if (!m) return
-    var atCu = m.at
+    var nyCu = m.ny
     var wCu = m.w
     var xCu = m.x
     var yCu = m.y
@@ -604,11 +647,9 @@
       m.x = kep(Math.round(m.x - (m.w - wCu) / 2), oTheo.x)
       m.y = kep(Math.round(m.y - (m.w - wCu) / 2), oTheo.y)
     }
-    if (m.at !== atCu) {
-      // dời mốc sang vị trí khác: xếp lại, vẽ lại dấu
-      day.sort(function (a, b) {
-        return a.at - b.at
-      })
+    if (m.ny !== nyCu) {
+      // dời mốc sang vị trí cuộn khác: xếp lại, vẽ lại dấu
+      xepDay()
       veLaiMoc()
       veDuongMoc()
     }
@@ -623,6 +664,53 @@
     m[key] = kep(giaTri, oTheo[key])
     apNgay()
     veLaiO()
+  }
+
+  /* GIỮ TƯ THẾ (người dùng: "vật thể ở đoạn này xoay dọc … xuống viewport
+   * dưới vẫn giữ nguyên, không xê dịch"). Giữa hai mốc máy luôn nội suy sang
+   * mốc sau, nên muốn nó đứng nguyên thì phải có một mốc TRÙNG tư thế ở cuối
+   * đoạn — tự gõ cho khớp rất khó. Hai nút chép tư thế của MỐC TRƯỚC sang vị
+   * trí đang cuộn (có mốc ở đây thì ghi đè, chưa có thì tạo):
+   *   'man'   — đứng yên TRÊN MÀN: giữ x, cỡ, góc và chỗ trên màn (ny + y bằng
+   *             mốc trước — tâm neo + y ra cùng một toạ độ màn ở mọi cỡ màn).
+   *             Trang trôi qua bên dưới, máy đứng im.
+   *   'trang' — trôi THEO TRANG: neo vào CÙNG phần tử với cùng y, nên máy dính
+   *             vào chữ / ảnh và cuộn đi cùng (kx-cd3d.js nội suy tuyến tính
+   *             đoạn hai mốc cùng neo cùng y). */
+  function giuTuThe(kieu) {
+    var sy = window.scrollY
+    var truoc = null
+    xepDay()
+    day.forEach(function (m) {
+      if (m._s < sy - (CONFIG.ganMoc || 0)) truoc = m
+    })
+    if (!truoc) {
+      nhay('Phía trên chưa có mốc nào để giữ tư thế')
+      return
+    }
+    var i = mocTaiDay()
+    var m = i >= 0 ? day[i] : mocDeSua(kieu === 'trang' ? truoc.neo : null)
+    if (!m) return
+    if (kieu === 'trang' && m.neo !== truoc.neo && !cd.doiNeo(m, truoc.neo)) {
+      nhay('Không đo được phần tử neo ' + truoc.neo)
+      return
+    }
+    m.x = truoc.x
+    m.w = truoc.w
+    m.dist = truoc.dist
+    m.rotX = truoc.rotX
+    m.rotY = truoc.rotY
+    m.rotZ = truoc.rotZ
+    m.y = kieu === 'trang' ? truoc.y : Math.round(((truoc.ny || 0) + truoc.y - (m.ny || 0)) * 10) / 10
+    xepDay()
+    apNgay()
+    veLaiMoc()
+    veDuongMoc()
+    veLaiO()
+    veLaiNote()
+    nhay(kieu === 'trang'
+      ? 'Từ mốc trước tới đây máy trôi THEO TRANG (neo ' + truoc.neo + ') — nhớ Lưu'
+      : 'Từ mốc trước tới đây máy ĐỨNG YÊN trên màn — nhớ Lưu')
   }
 
   function xoaMoc() {
@@ -645,56 +733,62 @@
   }
 
   function luu() {
-    cd.luu(vpDangSua, day)
+    cd.luu('chung', day)
+    datChua(false)
     xuatJson()
-    nhay('Đã lưu ' + vpDangSua + ' (' + day.length + ' mốc)')
+    nhay('Đã lưu ' + day.length + ' mốc — dùng chung cho mọi cỡ màn')
   }
 
   function ve() {
-    cd.xoaLuu(vpDangSua)
-    day = cd.dayMoc(vpDangSua)
+    cd.xoaLuu('chung')
+    day = cd.dayNeo()
     apNgay()
+    datChua(false)
     veLaiMoc()
     veDuongMoc()
     veLaiO()
     xuatJson()
-    nhay('Đã trả ' + vpDangSua + ' về mặc định')
+    nhay('Đã trả dãy mốc về mặc định')
   }
 
   function xuatJson() {
-    // In ra đúng dạng một mục của MOC trong kx-cd3d.js, chép thẳng vào file là
-    // bản clone mới cũng chạy đúng dãy này.
-    var luuTat = cd.docLuu()
-    var ra = []
-    cd.viewports.forEach(function (v) {
-      var d = luuTat[v.key]
-      if (!d || !d.length) return
-      ra.push(
-        '  ' +
-          v.key +
-          ': [\n' +
-          d
-            .map(function (m) {
-              return (
-                '    { at: ' + m.at + ', w: ' + Math.round(m.w) + ', x: ' + Math.round(m.x) +
-                ', y: ' + Math.round(m.y) + ', dist: ' + (Math.round(m.dist * 10) / 10) +
-                ', rotX: ' + Math.round(m.rotX) + ', rotY: ' + Math.round(m.rotY) +
-                ', rotZ: ' + Math.round(m.rotZ) + ' },'
-              )
-            })
-            .join('\n') +
-          '\n  ],'
-      )
-    })
-    oOut.value = ra.length ? 'const MOC = {\n' + ra.join('\n') + '\n}' : '(chưa lưu dãy nào)'
+    // In ra đúng dạng MOC trong kx-cd3d.js — chép thẳng vào file là bản clone
+    // mới cũng chạy đúng dãy này.
+    var d = cd.docLuu().chung
+    if (!d || !d.length) {
+      oOut.value = '(chưa lưu dãy nào)'
+      return
+    }
+    var r1 = function (v) {
+      return Math.round((v || 0) * 10) / 10
+    }
+    oOut.value =
+      'const MOC = {\n  chung: [\n' +
+      d
+        .map(function (m) {
+          return (
+            "    { neo: '" + m.neo + "', ny: " + r1(m.ny) + ', w: ' + Math.round(m.w) + ', x: ' + Math.round(m.x) +
+            ', y: ' + Math.round(m.y) + ', dist: ' + r1(m.dist) + ', rotX: ' + r1(m.rotX) +
+            ', rotY: ' + r1(m.rotY) + ', rotZ: ' + r1(m.rotZ) + ' },'
+          )
+        })
+        .join('\n') +
+      '\n  ],\n}'
+  }
+
+  function nhayLau(chu) {
+    clearTimeout(nhay._t)
+    bao.textContent = chu
+    bao.classList.add('is-on')
   }
 
   function nhay(chu) {
     bao.textContent = chu
+    bao.classList.add('is-on')
     clearTimeout(nhay._t)
     nhay._t = setTimeout(function () {
-      bao.textContent = ''
-    }, 1800)
+      bao.classList.remove('is-on')
+    }, 3200)
   }
 
   /* ===================================================== GIZMO trên vật thể
@@ -713,8 +807,18 @@
 
   /* Toạ độ của một điểm thế giới, quy về hệ 0..100 của viewBox. */
   function chieu(v) {
-    var p = v.project(cd.camera)
-    return { x: (p.x * 0.5 + 0.5) * 100, y: (-p.y * 0.5 + 0.5) * 100 }
+    var cam = cd.camera
+    var p = v.project(cam)
+    var x = p.x * 0.5 + 0.5
+    var y = -p.y * 0.5 + 0.5
+    // Camera chỉ vẽ một phần khung (setViewOffset — canvas tự nở theo máy):
+    // đổi toạ độ của phần đó ra toạ độ của cả ô vuông.
+    var vw = cam.view
+    if (vw && vw.enabled) {
+      x = (vw.offsetX + x * vw.width) / vw.fullWidth
+      y = (vw.offsetY + y * vw.height) / vw.fullHeight
+    }
+    return { x: x * 100, y: y * 100 }
   }
 
   /* Chiếu lại ba vòng theo tư thế HIỆN TẠI của máy. Gọi mỗi khung lúc bảng mở
@@ -863,6 +967,15 @@
     // để kéo dọc vòng nào thì máy cũng trôi theo tay.
     if (tay === 'rotY') goc = -goc
     q.multiply(new T.Quaternion().setFromAxisAngle(truc, goc * d2r))
+    ganQuat(q, dau)
+  }
+
+  /* Ghi một HƯỚNG (quaternion) vào mốc tại chỗ dưới dạng Euler 'XYZ'. Một
+   * hướng có HAI bộ Euler tương đương (x, y, z) và (x+180, 180−y, z+180): chọn
+   * bộ gần góc `dau` nhất, không thì máy lật vòng khi nội suy giữa hai mốc. */
+  function ganQuat(q, dau) {
+    var T = cd.THREE
+    var d2r = Math.PI / 180
     var e = new T.Euler().setFromQuaternion(q, 'XYZ')
     var vong = function (v) {
       v = ((v + 180) % 360 + 360) % 360 - 180
@@ -889,6 +1002,201 @@
     m.rotZ = Math.round(tot[2] * 10) / 10
     apNgay()
     veLaiO()
+    veLaiNote()
+  }
+
+  /* ======================================== XOAY THEO MÀN HÌNH + KHỚP GÓC
+   * Người dùng: "chỉnh kĩ từng chỗ … CD player xoay sang trái xong nghiêng
+   * theo đúng góc nghiêng của các ảnh". Ba góc rotX/Y/Z là góc quanh trục CỦA
+   * MÁY — đã xoay sang trái rồi thì "rotZ" không còn là nghiêng trên màn nữa,
+   * chỉnh bằng số rất khó trúng. Nên thêm xoay quanh trục CỦA MÀN HÌNH: camera
+   * nhìn dọc trục Z thế giới vào tâm máy, nên
+   *   quay trái/phải = quanh Y thế giới, ngả lên/xuống = quanh X thế giới,
+   *   nghiêng trên màn = quanh Z thế giới (máy xoay đúng trong mặt phẳng màn).
+   * Nhân quaternion của trục thế giới vào BÊN TRÁI hướng hiện tại. */
+  function xoayManHinh(truc, goc) {
+    var m = mocDeSua()
+    if (!m) return
+    var T = cd.THREE
+    var d2r = Math.PI / 180
+    var dau = Object.assign({}, m)
+    var q = new T.Quaternion().setFromEuler(new T.Euler(m.rotX * d2r, m.rotY * d2r, m.rotZ * d2r, 'XYZ'))
+    var v = truc === 'x' ? new T.Vector3(1, 0, 0) : truc === 'y' ? new T.Vector3(0, 1, 0) : new T.Vector3(0, 0, 1)
+    q.premultiply(new T.Quaternion().setFromAxisAngle(v, goc * d2r))
+    ganQuat(q, dau)
+  }
+
+  // Đưa góc của một ĐƯỜNG (không có chiều) về (−90, 90].
+  function goc90(a) {
+    a = ((a % 180) + 180) % 180
+    return a > 90 ? a - 180 : a
+  }
+
+  /* Góc nghiêng TRÊN MÀN của cạnh ngang máy (trục X của máy), độ, chiều kim
+   * đồng hồ dương — cùng quy ước với CSS rotate. Máy nằm ở gốc toạ độ, camera
+   * nhìn thẳng vào gốc, nên hướng chiếu của một vectơ chính là (vx, vy) — phép
+   * chia phối cảnh chia cả hai như nhau, góc không đổi. Máy xoay gần cạnh
+   * (trục X gần như chĩa vào camera) thì lấy trục Y của máy, trừ 90°. */
+  function gocManHinh(t) {
+    t = t || tuTheNay()
+    if (!t) return 0
+    var T = cd.THREE
+    var d2r = Math.PI / 180
+    var q = new T.Quaternion().setFromEuler(new T.Euler(t.rotX * d2r, t.rotY * d2r, t.rotZ * d2r, 'XYZ'))
+    var vx = new T.Vector3(1, 0, 0).applyQuaternion(q)
+    if (Math.hypot(vx.x, vx.y) > 0.25) return goc90(Math.atan2(-vx.y, vx.x) / d2r)
+    var vy = new T.Vector3(0, 1, 0).applyQuaternion(q)
+    return goc90(Math.atan2(-vy.y, vy.x) / d2r + 90)
+  }
+
+  // Xoay trong mặt phẳng màn cho cạnh ngang máy nghiêng đúng `dich` độ.
+  function datGocManHinh(dich) {
+    var m = mocDeSua()
+    if (!m) return
+    var lech = goc90(dich - gocManHinh(m))
+    // +θ quanh Z thế giới = NGƯỢC kim đồng hồ trên màn → đảo dấu.
+    xoayManHinh('z', -lech)
+    nhay('Nghiêng trên màn → ' + gocManHinh(m).toFixed(1) + '°')
+  }
+
+  /* Góc nghiêng thật của một phần tử trên màn: cộng dồn góc xoay của nó và
+   * mọi khối cha (cả `transform` lẫn thuộc tính `rotate` riêng). Dải ảnh "02."
+   * nghiêng bằng `rotate(-12.5deg)` trên khối bọc — đọc ra đúng −12.5. */
+  function gocPhanTu(el) {
+    var tong = 0
+    for (var e = el; e && e.nodeType === 1; e = e.parentElement) {
+      var cs = getComputedStyle(e)
+      if (cs.transform && cs.transform !== 'none') {
+        var mt = new DOMMatrix(cs.transform)
+        tong += (Math.atan2(mt.b, mt.a) * 180) / Math.PI
+      }
+      if (cs.rotate && cs.rotate !== 'none') {
+        var r = cs.rotate.trim().split(/\s+/)
+        var deg = r[r.length - 1]
+        // chỉ lấy xoay quanh Z (dạng "12deg" hoặc "z 12deg")
+        if (r.length === 1 || r[0] === 'z') tong += parseFloat(deg) * (/rad$/.test(deg) ? 180 / Math.PI : /turn$/.test(deg) ? 360 : 1)
+      }
+    }
+    return goc90(tong)
+  }
+
+  function tenNeo(neo) {
+    var e = cd.timNeo(neo)
+    if (!e) return 'không thấy'
+    var t = (e.textContent || '').replace(/\s+/g, ' ').trim()
+    return t ? (t.length > 22 ? t.slice(0, 22) + '…' : t) : e.tagName.toLowerCase()
+  }
+
+  /* Neo cho một phần tử bấm trúng: node Figma (`data-n`) gần nhất, hoặc —
+   * với khối do hiệu ứng dựng như dải ảnh — class `kx-…` DUY NHẤT trên trang.
+   * Bỏ khối cao hơn 1.5 màn (neo cả khúc thì kém chính xác). */
+  function neoCho(el) {
+    var tran = window.innerHeight * 1.5
+    for (var e = el; e && e !== document.body; e = e.parentElement) {
+      if (e.classList && e.classList.contains('kx-page')) break
+      var h = e.getBoundingClientRect().height
+      if (h > tran) continue
+      if (e.hasAttribute('data-n')) return e.getAttribute('data-n')
+      if (e.id) return '#' + e.id
+      var cls = [].slice.call(e.classList || []).filter(function (c) {
+        return /^kx-[a-z0-9-]+$/.test(c) && document.querySelectorAll('.' + c).length === 1
+      })
+      if (cls.length) return '.' + cls[0]
+    }
+    return null
+  }
+
+  /* CHỌN PHẦN TỬ TRÊN TRANG: bấm nút rồi bấm vào chữ / ảnh trên trang.
+   *   'neo' — neo mốc tại chỗ vào phần tử đó (máy đứng nguyên chỗ)
+   *   'goc' — nghiêng máy trên màn đúng góc của phần tử đó
+   * Bắt sự kiện ở pha capture và chặn lại, nên bấm vào link không chuyển trang.
+   * Esc để huỷ. */
+  var chon = null
+  var khungChon = null
+  function batChon(kieu) {
+    chon = kieu
+    if (!khungChon) {
+      khungChon = el('div', 'kx-cdb-chon')
+      document.body.appendChild(khungChon)
+    }
+    khungChon.hidden = true
+    document.documentElement.classList.add('kx-cdb-dang-chon')
+    cd.boc.style.pointerEvents = 'none'
+    nhayLau(kieu === 'neo' ? 'Bấm vào phần tử làm NEO cho mốc này (Esc huỷ)' : 'Bấm vào ảnh / phần tử để lấy GÓC NGHIÊNG (Esc huỷ)')
+  }
+  function tatChon() {
+    chon = null
+    if (khungChon) khungChon.hidden = true
+    document.documentElement.classList.remove('kx-cdb-dang-chon')
+    if (!bang.hidden) cd.boc.style.pointerEvents = 'auto'
+  }
+  function trungPhanTu(x, y) {
+    var ds = document.elementsFromPoint(x, y)
+    for (var i = 0; i < ds.length; i++) {
+      var e = ds[i]
+      if (bang.contains(e) || cd.boc.contains(e) || e === khungChon) continue
+      if (e.closest('.kx-cdb-man, .kx-cdb-luoi, .kx-cdb-chon')) continue
+      if (e === document.documentElement || e === document.body) continue
+      return e
+    }
+    return null
+  }
+  function ganChon() {
+    document.addEventListener('pointermove', function (e) {
+      if (!chon) return
+      var t = trungPhanTu(e.clientX, e.clientY)
+      if (!t) {
+        khungChon.hidden = true
+        return
+      }
+      var r = t.getBoundingClientRect()
+      khungChon.hidden = false
+      khungChon.style.cssText = 'left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px'
+      khungChon.setAttribute('data-goc', chon === 'goc' ? gocPhanTu(t).toFixed(1) + '°' : neoCho(t) || '—')
+    }, true)
+    var chan = function (e) {
+      if (!chon) return
+      if (bang.contains(e.target)) return
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+    }
+    document.addEventListener('pointerdown', function (e) {
+      if (!chon || bang.contains(e.target)) return
+      chan(e)
+      var t = trungPhanTu(e.clientX, e.clientY)
+      var kieu = chon
+      tatChon()
+      if (!t) return
+      if (kieu === 'goc') {
+        var g = gocPhanTu(t)
+        datGocManHinh(g)
+        nhay('Khớp góc phần tử: ' + g.toFixed(1) + '° → máy nghiêng ' + gocManHinh().toFixed(1) + '°')
+      } else {
+        var neo = neoCho(t)
+        if (!neo) {
+          nhay('Phần tử này không làm neo được')
+          return
+        }
+        var i = mocTaiDay()
+        if (i < 0) mocDeSua(neo)
+        else cd.doiNeo(day[i], neo)
+        xepDay()
+        apNgay()
+        veLaiMoc()
+        veDuongMoc()
+        veLaiO()
+        veLaiNote()
+        nhay('Mốc này giờ neo vào ' + neo + ' (' + tenNeo(neo) + ')')
+      }
+    }, true)
+    document.addEventListener('click', chan, true)
+    document.addEventListener('keydown', function (e) {
+      if (chon && e.key === 'Escape') {
+        tatChon()
+        nhay('Đã huỷ chọn')
+      }
+    }, true)
   }
 
   function batGizmo() {
@@ -926,9 +1234,12 @@
         var iGan = 0
         var tot = Infinity
         for (var i = 0; i < ds.length; i++) {
-          var q = (ds[i].x - cx100) * (ds[i].x - cx100) + (ds[i].y - cy100) * (ds[i].y - cy100)
-          if (q < tot) {
-            tot = q
+          // KHÔNG đặt tên `q`: `var` bị đẩy lên đầu hàm, che mất hàm q() quy
+          // đổi px — `q: q()` ở trên thành gọi undefined và MỌI cú kéo gizmo
+          // (phóng, dời, xoay) văng lỗi ngay lúc nhấn. Đây từng là lỗi thật.
+          var kc = (ds[i].x - cx100) * (ds[i].x - cx100) + (ds[i].y - cy100) * (ds[i].y - cy100)
+          if (kc < tot) {
+            tot = kc
             iGan = i
           }
         }
@@ -1091,9 +1402,53 @@
     })
     nutCong.push(b)
     wrap.appendChild(b)
+    // Mở EDITOR 3D (tools/cd-visualizer) — nơi chỉnh chính chiếc máy: vật
+    // liệu, đĩa, màn hình, nhạc… rồi "Lưu sang website".
+    var bEd = el('button', 'kx-cdb__editor', '🛠 Mở editor 3D (máy CD)')
+    bEd.type = 'button'
+    bEd.title = 'Mở trình chỉnh máy CD (tools/cd-visualizer, cổng 3114) ở tab mới — chưa chạy thì serve.mjs tự bật'
+    bEd.addEventListener('click', function () {
+      moEditor(tb)
+    })
+    wrap.appendChild(bEd)
     wrap.appendChild(tb)
     veCong()
     return wrap
+  }
+
+  /* Bấm nút: mở tab TRỐNG ngay trong cú bấm (sau một lần await trình duyệt
+   * coi là popup và chặn), hỏi serve.mjs bật editor nếu chưa chạy, rồi trỏ
+   * tab đó tới editor. Mở bằng server khác (không có endpoint) thì thử thẳng
+   * localhost:3114 — editor đang chạy sẵn thì vẫn vào được. */
+  var EDITOR_URL = 'http://localhost:3114/'
+  function moEditor(tb) {
+    var tab = window.open('', '_blank')
+    var bao2 = function (chu) {
+      tb.textContent = chu
+    }
+    bao2('Đang mở editor 3D…')
+    fetch('/__kx-editor', { method: 'POST', headers: { 'x-kx-editor': '1' } })
+      .then(function (r) {
+        return r.json().catch(function () {
+          return { ok: false, khongCo: true }
+        })
+      })
+      .catch(function () {
+        return { ok: false, khongCo: true }
+      })
+      .then(function (kq) {
+        if (kq.ok || kq.khongCo) {
+          var url = kq.url || EDITOR_URL
+          if (tab) tab.location.href = url
+          else window.open(url, '_blank')
+          bao2(kq.khongCo
+            ? 'Server này không tự bật được editor — nếu tab mới trống, chạy: cd tools/cd-visualizer && npm run dev'
+            : kq.daChay ? 'Editor 3D đang chạy — đã mở ở tab mới' : 'Đã bật editor 3D (cổng 3114) và mở ở tab mới')
+        } else {
+          if (tab) tab.close()
+          bao2('Không mở được editor: ' + (kq.error || 'lỗi không rõ'))
+        }
+      })
   }
   function doiCong(tb) {
     var ctl = window.KX_CD3D_CTL
@@ -1165,19 +1520,6 @@
       )
     )
     bang.appendChild(hangCongTac())
-
-    var vps = el('div', 'kx-cdb__vps')
-    cd.viewports.forEach(function (p) {
-      var b = el('button', null, p.key.replace('w', ''))
-      b.type = 'button'
-      b.title = p.label
-      b.addEventListener('click', function () {
-        chonVp(p.key)
-      })
-      nutVp[p.key] = b
-      vps.appendChild(b)
-    })
-    bang.appendChild(vps)
 
     var modes = el('div', 'kx-cdb__modes')
     ;[['move', 'Dời (G)'], ['rotate', 'Xoay (R)'], ['scale', 'Phóng (S)']].forEach(function (p) {
@@ -1288,8 +1630,76 @@
     bang.appendChild(el('p', 'kx-cdb__moc-ten', 'Lật nhanh (quanh trục của máy)'))
     bang.appendChild(hangLat)
 
+    // XOAY THEO MÀN HÌNH — trục của màn, không phải của máy.
+    bang.appendChild(el('p', 'kx-cdb__moc-ten', 'Xoay theo màn hình (độ) — Shift: ×5'))
+    ;[
+      ['Quay', 'y', [['◀ 5', -5], ['◀ 1', -1], ['1 ▶', 1], ['5 ▶', 5]], 'Quay mặt máy sang trái / phải'],
+      ['Ngả', 'x', [['▲ 5', -5], ['▲ 1', -1], ['▼ 1', 1], ['▼ 5', 5]], 'Ngả mặt máy lên / xuống'],
+      ['Nghiêng', 'z', [['⟲ 5', 5], ['⟲ 1', 1], ['⟳ 1', -1], ['⟳ 5', -5]], 'Nghiêng trong mặt phẳng màn hình'],
+    ].forEach(function (h) {
+      var hang = el('div', 'kx-cdb__man')
+      hang.appendChild(el('span', null, h[0]))
+      h[2].forEach(function (n) {
+        var b = el('button', null, n[0])
+        b.type = 'button'
+        b.title = h[3] + ' — sửa mốc tại chỗ'
+        b.addEventListener('click', function (e) {
+          xoayManHinh(h[1], n[1] * (e.shiftKey ? 5 : 1))
+        })
+        hang.appendChild(b)
+      })
+      bang.appendChild(hang)
+    })
+    var hangGoc2 = el('div', 'kx-cdb__row')
+    hangGoc2.appendChild(el('label', null, 'Nghiêng trên màn (°)'))
+    oGoc = document.createElement('input')
+    oGoc.type = 'number'
+    oGoc.step = 0.5
+    oGoc.title = 'Góc của cạnh ngang máy trên màn hình, chiều kim đồng hồ dương (như CSS rotate). Gõ số = máy xoay tới đúng góc đó.'
+    oGoc.addEventListener('change', function () {
+      var v = parseFloat(oGoc.value)
+      if (!isNaN(v)) datGocManHinh(v)
+    })
+    hangGoc2.appendChild(oGoc)
+    bang.appendChild(hangGoc2)
+    var hangChon = el('div', 'kx-cdb__hai')
+    var bKhop = el('button', null, '🎯 Khớp góc phần tử')
+    bKhop.type = 'button'
+    bKhop.title = 'Bấm nút rồi bấm vào một ảnh / chữ trên trang: máy nghiêng trên màn đúng góc của nó'
+    bKhop.addEventListener('click', function () {
+      batChon('goc')
+    })
+    var bNeo = el('button', null, '📌 Neo vào phần tử')
+    bNeo.type = 'button'
+    bNeo.title = 'Bấm nút rồi bấm vào phần tử trên trang: mốc tại chỗ bám theo phần tử đó ở mọi cỡ màn (máy đứng nguyên chỗ)'
+    bNeo.addEventListener('click', function () {
+      batChon('neo')
+    })
+    hangChon.appendChild(bKhop)
+    hangChon.appendChild(bNeo)
+    bang.appendChild(hangChon)
+
     hangMoc = el('div', 'kx-cdb__moc')
     bang.appendChild(hangMoc)
+
+    // GIỮ TƯ THẾ từ mốc trước tới vị trí đang cuộn.
+    var hangGiu = el('div', 'kx-cdb__hai')
+    var bGiuMan = el('button', null, '⏸ Đứng yên trên màn tới đây')
+    bGiuMan.type = 'button'
+    bGiuMan.title = 'Chép tư thế + chỗ trên màn của MỐC TRƯỚC sang đây: cả đoạn máy đứng im, trang trôi qua bên dưới'
+    bGiuMan.addEventListener('click', function () {
+      giuTuThe('man')
+    })
+    var bGiuTrang = el('button', null, '↕ Trôi theo trang tới đây')
+    bGiuTrang.type = 'button'
+    bGiuTrang.title = 'Chép tư thế của MỐC TRƯỚC sang đây, neo cùng phần tử: cả đoạn máy dính vào nội dung, cuộn đi cùng chữ'
+    bGiuTrang.addEventListener('click', function () {
+      giuTuThe('trang')
+    })
+    hangGiu.appendChild(bGiuMan)
+    hangGiu.appendChild(bGiuTrang)
+    bang.appendChild(el('p', 'kx-cdb__moc-ten', 'Giữ nguyên tư thế mốc trước (cuộn tới chỗ muốn hết đoạn giữ rồi bấm)'))
+    bang.appendChild(hangGiu)
 
     O.forEach(function (o) {
       var row = el('div', 'kx-cdb__row')
@@ -1307,6 +1717,7 @@
 
     var acts = el('div', 'kx-cdb__acts')
     var bLuu = el('button', null, 'Lưu')
+    nutLuu = bLuu
     bLuu.type = 'button'
     bLuu.addEventListener('click', luu)
     var bVe = el('button', null, 'Về mặc định')
@@ -1318,8 +1729,12 @@
 
     note = el('p', 'kx-cdb__note')
     bang.appendChild(note)
-    bao = el('p', 'kx-cdb__note')
-    bang.appendChild(bao)
+    /* Thông báo NỔI giữa đáy màn, không nằm trong bảng: bảng dài và cuộn
+     * riêng nên dòng báo ở cuối bảng khuất mất — người dùng bấm "Đồng bộ cỡ"
+     * không thấy phản hồi nào, tưởng nút hỏng. */
+    bao = el('div', 'kx-cdb-bao')
+    bao.setAttribute('role', 'status')
+    document.body.appendChild(bao)
 
     oOut = document.createElement('textarea')
     oOut.className = 'kx-cdb__out'
@@ -1336,11 +1751,12 @@
     batGizmo()
   }
 
-  function chonVp(key) {
-    vpDangSua = key
-    day = cd.dayMoc(key)
-    veLaiVp()
+  // Nạp dãy đang chạy làm bản nháp (mốc kiểu cũ đã được quy sang neo).
+  function chonVp() {
+    vpDangSua = 'chung'
+    day = cd.dayNeo()
     apNgay()
+    datChua(false) // vừa nạp từ bản đã lưu
     veLaiMoc()
     veDuongMoc()
     veLaiO()
@@ -1370,7 +1786,7 @@
     if (mo) {
       // Máy chạy THEO CUỘN như ngoài site — không ép tư thế nào cả.
       cd.deTay(null)
-      chonVp(vpDangSua || vpHienTai())
+      chonVp()
       if (lopMoc) lopMoc.hidden = false
       veLuoi()
       veLaiCheDo()
@@ -1387,8 +1803,9 @@
     if (!CONFIG.enabled) return
     cd = window.KX_CD3D
     if (!cd) return
-    vpDangSua = vpHienTai()
+    vpDangSua = 'chung'
     dungBang()
+    ganChon()
     // Vừa bật máy từ bảng nhỏ: bảng nhỏ nhường chỗ cho bảng đủ, giữ trạng thái mở.
     var tuNho = false
     if (nho) {
@@ -1433,15 +1850,14 @@
 
     addEventListener('resize', function () {
       if (!bang.hidden) {
-        veLaiVp()
         veDuongMoc() // cao trang đổi → vị trí dấu mốc đổi
         veLuoi()
         veLaiNote()
       }
     })
 
-    // hcnMay / dichLuoi lộ ra để gỡ rối (đo đúng hình máy + đường lưới mà hít dùng).
-    window.KX_CD3D_BUILDER = { config: CONFIG, bat: bat, chonVp: chonVp, hcnMay: hcnMay, dichLuoi: dichLuoi, hut: hut }
+    // Lộ ra để gỡ rối / đo: hình máy, đường lưới, xoay theo màn, góc phần tử.
+    window.KX_CD3D_BUILDER = { config: CONFIG, bat: bat, chonVp: chonVp, hcnMay: hcnMay, dichLuoi: dichLuoi, hut: hut, giuTuThe: giuTuThe, xoayManHinh: xoayManHinh, gocManHinh: gocManHinh, gocPhanTu: gocPhanTu, datGocManHinh: datGocManHinh, neoCho: neoCho, batChon: batChon, get day() { return day } }
   }
 
   // Chờ kx-cd3d.js dựng xong rồi mới nối — nó là module nên chạy sau file này.

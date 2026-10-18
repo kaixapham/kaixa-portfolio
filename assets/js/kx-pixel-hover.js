@@ -15,6 +15,9 @@
  * mỗi lần rê chỉ chạy Web Animations trên các ô có sẵn — không cấp phát gì
  * thêm. Rê ra giữa chừng thì quét đi TỪ ĐỘ PHỦ hiện tại, không giật.
  *
+ * Rê vào thì chữ trong nút còn XÁO KÍ TỰ một lượt (người dùng chốt "text
+ * effect như text ở loading") — `xao*`.
+ *
  * Nút = khối cha của chữ "EMAIL ME" (`chu`), cộng các selector ở `them`. Bám
  * chữ chứ không bám class: class sinh tự động, đổi tên mỗi lần dựng lại.
  * File KHÔNG chứa UI setting.
@@ -24,7 +27,7 @@
 
   var CONFIG = {
     enabled: true,
-    chu: 'EMAIL ME', // nút = khối cha của dòng chữ này (cách nhau bằng ||)
+    chu: 'EMAIL ME||EXPLORE||LIVE SITE', // nút = khối cha của dòng chữ này (cách nhau bằng ||)
     them: '', // selector thêm, cách nhau bằng dấu phẩy
     o: 8, // px thiết kế — cạnh một ô pixel
     vaoMs: 380, // quét vào hết nút
@@ -34,6 +37,12 @@
     color: '#ffffff',
     chuMau: '#000000', // màu chữ + icon khi hover (bỏ qua nếu blend = difference)
     blend: 'normal', // 'difference' = chữ tự đảo màu (xám → xám nhạt), không đổi màu chữ
+    // Xáo chữ lúc rê vào — cùng kiểu chữ chạy của màn loading (kx-shuffle-text.js)
+    xao: true,
+    xaoNhipMs: 30, // ms mỗi nhịp đổi kí tự
+    xaoSoNhip: 8, // mỗi kí tự nhảy bao nhiêu nhịp rồi đứng lại
+    xaoTre: 1, // nhịp trễ giữa hai kí tự liền nhau (chữ đứng lại từ trái sang)
+    xaoKiTu: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*',
   }
 
   var S = CONFIG
@@ -137,6 +146,48 @@
     })
   }
 
+  /* Xáo chữ: chỉ ghi `nodeValue` của text node, 1 kí tự thay đúng 1 kí tự,
+   * dấu cách giữ nguyên — Geist Mono đều bề ngang nên nút không xê dịch. Rê
+   * vào lại giữa chừng thì chạy lại từ đầu. Chỉ chạy lúc rê, không vòng nào
+   * sống thường trực. */
+  function xaoChu(nut) {
+    if (!S.xao) return
+    var ds = nut.__kxXao
+    if (!ds) {
+      ds = nut.__kxXao = []
+      var w = document.createTreeWalker(nut, NodeFilter.SHOW_TEXT)
+      for (var t = w.nextNode(); t; t = w.nextNode()) {
+        if (t.parentElement && t.parentElement.tagName === 'P' && t.nodeValue.trim()) ds.push({ n: t, goc: t.nodeValue })
+      }
+    }
+    if (nut.__kxXaoT) clearInterval(nut.__kxXaoT)
+    var nhip = 0
+    var kt = S.xaoKiTu || 'X'
+    function ve() {
+      var xong = true
+      ds.forEach(function (d) {
+        var g = d.goc
+        var ra = ''
+        for (var i = 0; i < g.length; i++) {
+          var c = g.charAt(i)
+          if (c === ' ' || nhip >= i * S.xaoTre + S.xaoSoNhip) ra += c
+          else {
+            ra += kt.charAt((Math.random() * kt.length) | 0)
+            xong = false
+          }
+        }
+        d.n.nodeValue = ra
+      })
+      nhip++
+      if (xong) {
+        clearInterval(nut.__kxXaoT)
+        nut.__kxXaoT = 0
+      }
+    }
+    ve()
+    nut.__kxXaoT = setInterval(ve, S.xaoNhipMs)
+  }
+
   function boot() {
     if (!S.enabled) return
     if (window.matchMedia && !matchMedia('(hover: hover)').matches) return
@@ -144,9 +195,9 @@
     cacNut().forEach(function (nut) {
       if (nut.__kxPhGan) return
       nut.__kxPhGan = true
-      nut.addEventListener('pointerenter', function () { chay(nut, true) })
+      nut.addEventListener('pointerenter', function () { chay(nut, true); xaoChu(nut) })
       nut.addEventListener('pointerleave', function () { chay(nut, false) })
-      nut.addEventListener('focusin', function () { chay(nut, true) })
+      nut.addEventListener('focusin', function () { chay(nut, true); xaoChu(nut) })
       nut.addEventListener('focusout', function () { chay(nut, false) })
     })
   }

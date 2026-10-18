@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "savedAt": "2026-10-18T01:20:02.260Z",
+  "savedAt": "2026-10-18T14:57:00.016Z",
   "params": {
     "body": {
       "ratio": "3:4",
@@ -66,7 +66,7 @@
       "surface": "matte",
       "iconScale": 0.33,
       "iconGlow": "press",
-      "iconColor": "#595959",
+      "iconColor": "#f2f2f2",
       "iconIntensity": 1.75,
       "actions": [
         "transport",
@@ -142,15 +142,15 @@
     "hue": 36,
     "material": {
       "finish": "blasted",
-      "color": "#ffffff",
-      "roughness": 0.42,
-      "metalness": 0.95,
+      "color": "#9a9ea2",
+      "roughness": 0.52,
+      "metalness": 0.94,
       "anisotropy": 0,
       "rotation": 0,
-      "grainScale": 1,
-      "grainDensity": 1,
-      "clearcoat": 0.12,
-      "clearcoatRoughness": 0.62,
+      "grainScale": 1.2,
+      "grainDensity": 1.1,
+      "clearcoat": 0.06,
+      "clearcoatRoughness": 0.7,
       "texture": {
         "shell": {
           "blend": 0.18,
@@ -168,7 +168,7 @@
           "scale": 10.21
         }
       },
-      "screenReflection": 0.94,
+      "screenReflection": 0.3,
       "wear": {
         "kind": "brushed",
         "density": 1.11,
@@ -181,11 +181,11 @@
     }
   },
   "env": {
-    "preset": "c4d",
-    "intensity": 0.62,
-    "rotation": 249,
-    "exposure": 0.9,
-    "shadow": 0.7,
+    "preset": "studio",
+    "intensity": 0.61,
+    "rotation": 144,
+    "exposure": 0.69,
+    "shadow": 0.76,
     "bloom": {
       "on": false,
       "strength": 0.04,
@@ -209,18 +209,18 @@
     "rig": {
       "key": {
         "color": "#ffffff",
-        "intensity": 1.17
+        "intensity": 1.35
       },
       "fill": {
-        "color": "#fafafa",
-        "intensity": 3.11
+        "color": "#dde6ff",
+        "intensity": 0.4
       },
       "rim": {
         "color": "#ffffff",
-        "intensity": 0.16
+        "intensity": 0.45
       },
       "hemi": {
-        "intensity": 2.59
+        "intensity": 0.3
       }
     }
   },

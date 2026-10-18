@@ -117,6 +117,17 @@ async function mount(host) {
       f.mod.render(device, frame)
       src = out
     })
+    /* Chụp KẾT QUẢ ra ImageBitmap ngay trong tác vụ này (texture hiện tại
+     * của canvas WebGPU chỉ đọc được trước khi trình duyệt trình chiếu nó),
+     * rồi phát `kx-shader-xong` — hiệu ứng khác (kx-cd-glass.js: kính lỏng
+     * theo máy CD) dùng làm texture, nên kính bẻ đúng ảnh ĐÃ dither. */
+    createImageBitmap(canvas)
+      .then((bm) => {
+        if (host.__kxAnh) host.__kxAnh.close()
+        host.__kxAnh = bm
+        window.dispatchEvent(new CustomEvent('kx-shader-xong', { detail: host }))
+      })
+      .catch(() => {})
   }
 
   draw()

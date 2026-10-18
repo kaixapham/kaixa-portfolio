@@ -13,6 +13,8 @@
     email: 'hello@kaixa.com',          // cùng địa chỉ với trang contact
     instagram: '',                     // để trống = chữ "( ①Instagram )" không bấm được
     behance: '',
+    explore: 'works.html',             // nút EXPLORE (cụm "02." của Home)
+    liveSite: '',                      // nút LIVE SITE — để trống = không bấm được
     navFixed: true,                    // thanh nav dính góc dưới trái khi cuộn
     navBottom: 24,                     // px thiết kế
     // Phần tử bấm sang trang chi tiết dự án (Works) / quay lại Works (Detail)
@@ -217,6 +219,8 @@
     byText('EMAIL ME').forEach(function (p) { link(p.parentElement, 'mailto:' + CONFIG.email, 'Email ' + CONFIG.email) })
     if (CONFIG.instagram) byText('Instagram').forEach(function (p) { link(p.parentElement, CONFIG.instagram, 'Instagram') })
     if (CONFIG.behance) byText('Behance').forEach(function (p) { link(p.parentElement, CONFIG.behance, 'Behance') })
+    if (CONFIG.explore) byText('EXPLORE').forEach(function (p) { link(p.parentElement, CONFIG.explore, 'Explore') })
+    if (CONFIG.liveSite) byText('LIVE SITE').forEach(function (p) { link(p.parentElement, CONFIG.liveSite, 'Live site') })
     CONFIG.toDetail.split(',').forEach(function (id) { link($(id.trim()), 'work-detail.html', 'Xem dự án') })
     // Bấm vào KHUNG ảnh, không phải thẻ <img>: canvas sóng/kính của
     // kx-wave-images.js nằm đè lên nhưng để pointer-events: none, nên cú bấm

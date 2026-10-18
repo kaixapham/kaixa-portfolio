@@ -31,8 +31,12 @@
   'use strict'
 
   var CONFIG = {
-    enabled: true,
-    kieu: 'ufo', // alien | ufo | jet | claw | crystal | squid | rocket | mecha | mercury | probe | beetle
+    enabled: true, // false = bỏ hẳn file (đọc một lần lúc mở trang)
+    // Bật/tắt LÚC ĐANG CHẠY (người dùng chốt "cursor có cơ chế tắt bật"):
+    // false = giấu tàu, trả con trỏ hệ thống; bật lại là hiện ngay, không cần
+    // tải lại trang. Công tắc ở mục Cursor của bảng H.
+    hien: false,
+    kieu: 'jet', // alien | ufo | jet | claw | crystal | squid | rocket | mecha | mercury | probe | beetle
     // 'file|mũiX|mũiY|sángX|sángY' — đường dẫn TƯƠNG ĐỐI (luật số 5)
     alien: 'assets/img/cursor/alien.webp|0.023|0.029|0.84|0.85',
     ufo: 'assets/img/cursor/ufo.webp|0.038|0.03|0.83|0.6',
@@ -45,7 +49,7 @@
     mercury: 'assets/img/cursor/mercury.webp|0.03|0.03|0.26|0.25',
     probe: 'assets/img/cursor/probe.webp|0.12|0.032|0.57|0.52',
     beetle: 'assets/img/cursor/beetle.webp|0.138|0.021|0.54|0.43',
-    size: 32, // px CSS thật (không theo px thiết kế — con trỏ giữ cỡ cố định)
+    size: 26, // px CSS thật (không theo px thiết kế — con trỏ giữ cỡ cố định)
     tilt: 14, // độ — nghiêng tối đa theo hướng di chuột (0 = không nghiêng)
     tiltEase: 0.18, // 0..1 mỗi khung 60fps — nghiêng / về thẳng nhanh cỡ nào
     hoverScale: 1.18, // rê vào link, nút
@@ -121,8 +125,16 @@
     }
     apDung()
     // Chỉ giấu con trỏ hệ thống khi ảnh đã nạp — lỗi ảnh thì còn con trỏ gốc.
-    img.addEventListener('load', function () { document.documentElement.classList.add('kx-cur') }, { once: true })
-    if (img.complete && img.naturalWidth) document.documentElement.classList.add('kx-cur')
+    // Đang tắt (`hien: false`) thì giữ con trỏ hệ thống và giấu tàu.
+    var anhXong = false
+    function datHien() {
+      var bat = !!S.hien && anhXong
+      document.documentElement.classList.toggle('kx-cur', bat)
+      tau.style.display = S.hien ? '' : 'none'
+    }
+    img.addEventListener('load', function () { anhXong = true; datHien() }, { once: true })
+    if (img.complete && img.naturalWidth) anhXong = true
+    datHien()
 
     var xTruoc = -100
     var goc = 0 // độ nghiêng hiện tại
@@ -191,7 +203,18 @@
     })
     window.addEventListener('blur', function () { tau.classList.remove('is-on') })
 
-    Object.assign(api, { apDung: apDung })
+    Object.assign(api, {
+      apDung: function () {
+        apDung()
+        datHien()
+      },
+      // Bật/tắt từ chỗ khác (vd. console): KX_CURSOR.bat(false)
+      bat: function (on) {
+        S.hien = on == null ? !S.hien : !!on
+        datHien()
+        return S.hien
+      },
+    })
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true })

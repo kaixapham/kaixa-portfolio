@@ -49,7 +49,7 @@ const CONFIG = {
    * vào dòng này. false = KHÔNG dựng three.js (không tốn GPU, không tải deck),
    * ảnh phẳng của Figma hiện lại như bản thiết kế. Khác `enabled`: tắt
    * `enabled` là bỏ hẳn file này, không còn công tắc nào để bật lại. */
-  hien: false,
+  hien: true,
   anchor: '9:3529', // node Figma của ô đĩa phẳng — dùng để suy vị trí mặc định
   hideFlat: true, // false = để lộ cả ảnh phẳng lẫn 3D, tiện so khi chỉnh
   /* Những node PHẲNG mà máy 3D thay thế — giấu hết, không thì trang có đầy
@@ -88,15 +88,9 @@ const CONFIG = {
   spin: 1, // tốc độ quay đĩa (0 = đứng yên)
   scrollSpin: 0.35, // cuộn thêm bao nhiêu vòng đĩa trên mỗi màn hình cuộn
   muot: true, // nội suy mốc bằng đường cong mềm thay vì đường thẳng
-  /* RESPONSIVE (người dùng chốt "chia theo %"): mốc vẫn ghi x/y/w bằng px của
-   * khung thiết kế 1920×1080, nhưng đặt lên màn theo TÂM tính bằng % — tâm
-   * ngang = (x + w/2)/1920 của bề rộng, tâm dọc = (y + w/2)/1080 của CHIỀU
-   * CAO cửa sổ — và cỡ theo khung 16:9 vừa trong cửa sổ, min(rộng/1920,
-   * cao/1080). Ở màn 16:9 ra y hệt cách cũ nên mốc đã lưu không phải đổi; màn
-   * tỉ lệ khác thì máy giữ đúng vị trí TƯƠNG ĐỐI và luôn vừa khung. Cách cũ
-   * nhân cả x, y, w với rộng/1920: màn cao/thấp hơn 16:9 là máy trôi dọc, màn
-   * rộng mà thấp là máy to tràn khung. false = quay về cách cũ. */
-  phanTram: true,
+  // Neo mốc: phần tử được tự chọn làm neo khi tạo mốc phải cao dưới chừng
+  // này phần chiều cao cửa sổ (khối to hơn — cả một khúc — neo kém chính xác).
+  neoMaxCao: 0.9,
   // ------------------------------------------------------------- parallax
   // Máy nhích và ngả nhẹ theo con trỏ. Cộng THÊM lên tư thế của mốc, không
   // thay thế — nên dù đang ở mốc nào thì parallax cũng chỉ là một lớp phủ mỏng.
@@ -156,26 +150,35 @@ const CONFIG = {
  * tới cuối trang, không đóng đinh vào một khúc nào. Cuộn tới đâu thì nó ở tư
  * thế của mốc tại đó — giữa hai mốc thì nội suy.
  *
- * Mỗi mốc:
- *   at   : 0..1 — cuộn tới bao nhiêu phần trang thì mốc này đúng
+ * MỐC NEO VÀO PHẦN TỬ CỦA TRANG (người dùng: "khó xác định vị trí trên mọi
+ * cỡ màn hình, tôi muốn một sự đồng bộ"). Bản trước ghi `at` = phần trăm cuộn
+ * CẢ TRANG và đặt máy theo % cửa sổ — mà chiều cao trang Home đổi theo tỉ lệ
+ * màn (các khúc một-màn cao 100svh, phần còn lại co theo bề rộng), nên cùng
+ * một `at` rơi vào nội dung khác nhau ở 16:9 với 16:10, và máy trôi khỏi chữ.
+ * Nay mỗi mốc bám một phần tử như một layer Figma:
+ *
+ *   neo  : phần tử làm mốc — node id Figma (`data-n`) hoặc một selector
+ *          (bắt đầu bằng . # [) cho phần tử do hiệu ứng dựng (dải ảnh `.kx-ls`)
+ *   ny   : mốc này "đúng" khi TÂM phần tử neo nằm lệch giữa màn ny px thiết
+ *          kế (âm = trên giữa màn). Đây là thứ thay cho `at`.
+ *   x    : mép trái ô vẽ, px thiết kế tính từ mép trái trang
+ *   y    : mép trên ô vẽ, px thiết kế tính từ TÂM phần tử neo
  *   w    : cạnh ô vẽ, px thiết kế
- *   x,y  : góc trên-trái ô vẽ, tính theo VIEWPORT (khung 1920x1080 thiết kế).
- *          Nên x 470 / y 50 là đặt chính giữa màn hình.
  *   dist : camera lùi xa bao nhiêu — số to thì máy nhỏ lại mà ô vẽ không đổi
  *   rotX : ngả trước/sau, độ
- *   rotY : xoay quanh trục dọc, độ. **90 = nhìn từ CẠNH** (máy xoay dọc ra,
- *          chỉ còn thấy bề dày) — đúng tư thế trong ảnh thứ ba bạn gửi.
+ *   rotY : xoay quanh trục dọc, độ. **90 = nhìn từ CẠNH**
  *   rotZ : xoay trong mặt phẳng màn hình, độ
  *
- * Dãy phải xếp theo `at` TĂNG DẦN.
+ * Mọi số px thiết kế nhân với bề rộng trang / 1920 — ĐÚNG hệ số của chính nội
+ * dung Home (`--u = 100cqw / 120`), nên máy giữ nguyên chỗ và cỡ so với chữ,
+ * ảnh ở mọi cỡ màn: MỘT dãy chung cho mọi màn, không còn dãy theo viewport.
+ * Vị trí cuộn của từng mốc tính lại khi đổi cỡ (đo thưa, xem `doNeo`).
  *
- * Mỗi viewport một dãy riêng. Viewport nào không khai thì dùng dãy của
- * `w1920` — vì cả trang co giãn theo `--u = 100cqw / 120` nên một toạ độ
- * thiết kế rơi vào cùng chỗ ở mọi bề rộng; chỉ khi muốn ĐỔI BỐ CỤC ở khổ hẹp
- * mới cần dãy riêng.
+ * Mốc kiểu cũ (`at`, không `neo`) vẫn chạy: lúc nạp được quy sang neo theo
+ * cỡ màn hiện tại (`quyNeo`).
  *
- * Trình builder (`kx-cd3d-builder.js`, bấm `K`) ghi đè xuống localStorage;
- * ở đây là dãy gốc để clone mới cũng chạy đúng.
+ * Trình builder (`kx-cd3d-builder.js`, bấm `K`) ghi đè xuống localStorage
+ * (khoá `chung`); ở đây là dãy gốc để clone mới cũng chạy đúng.
  */
 const VIEWPORTS = [
   { key: 'w1920', min: 1681, label: '1920 — desktop lớn' },
@@ -187,29 +190,23 @@ const VIEWPORTS = [
 ]
 
 const MOC = {
-  // Dãy gốc bám theo chính các mục của trang Home (đo bằng px thiết kế rồi quy
-  // ra tiến độ cuộn): hero/Awards Winner → 01. → WORKS 20-27 → 02. →
-  // "Reach out…" → 03./dịch vụ → KX. FOLIO 84VN.
+  // Dãy gốc bám theo chính các mục của trang Home: hero/Awards Winner → 01. →
+  // WORKS 20-27 → 02. → "Reach out…" → dịch vụ → KX. FOLIO 84VN.
   // Cung chuyển: 3/4 nghiêng → chính diện → xoay dọc nhìn từ cạnh.
-  w1920: [
-    // y 341 "∏Awards Winner∏" — 3/4 nghiêng, to (ảnh gợi ý 1)
-    { at: 0.0, w: 1050, x: 560, y: 40, dist: 25, rotX: -6, rotY: -32, rotZ: -4 },
-    // y 1302 "01."
-    { at: 0.12, w: 1000, x: 470, y: 60, dist: 26, rotX: -3, rotY: -16, rotZ: -2 },
-    // y 2976 "WORKS 20-27"
-    { at: 0.27, w: 900, x: 780, y: 120, dist: 27, rotX: 4, rotY: 28, rotZ: 3 },
-    // y 3888 "02."
-    { at: 0.42, w: 940, x: 220, y: 90, dist: 26, rotX: 2, rotY: -24, rotZ: -3 },
-    // y 6552 "Reach out…" — CHÍNH DIỆN, to nhất (ảnh gợi ý 2)
-    { at: 0.6, w: 1120, x: 400, y: 10, dist: 24, rotX: 0, rotY: 0, rotZ: 0 },
-    // y 7964-8281 "①Web Design / Editorial Design / Branding / Art Direction"
-    { at: 0.75, w: 980, x: 640, y: 70, dist: 26, rotX: -4, rotY: 40, rotZ: 2 },
-    // y 11080-11641 "KX. FOLIO 84VN" — XOAY DỌC, nhìn từ cạnh (ảnh gợi ý 3)
-    { at: 1.0, w: 900, x: -60, y: 90, dist: 27, rotX: 0, rotY: 90, rotZ: 0 },
+  // Quy từ dãy `at` cũ ở 1920×1080 (neo = phần tử gần tâm máy nhất ở mỗi mốc).
+  chung: [
+    { neo: '332:7531', ny: 25, w: 1050, x: 560, y: -525, dist: 25, rotX: -6, rotY: -32, rotZ: -4 },
+    { neo: '1:268', ny: 12, w: 1000, x: 470, y: -491, dist: 26, rotX: -3, rotY: -16, rotZ: -2 },
+    { neo: '1:275', ny: -38, w: 900, x: 780, y: -382, dist: 27, rotX: 4, rotY: 28, rotZ: 3 },
+    { neo: '100:3729', ny: -131, w: 940, x: 220, y: -319, dist: 26, rotX: 2, rotY: -24, rotZ: -3 },
+    { neo: '1:434', ny: 44, w: 1120, x: 400, y: -574, dist: 24, rotX: 0, rotY: 0, rotZ: 0 },
+    { neo: '1:450', ny: 68, w: 980, x: 640, y: -538, dist: 26, rotX: -4, rotY: 40, rotZ: 2 },
+    { neo: '1:401', ny: 72, w: 900, x: -60, y: -522, dist: 27, rotX: 0, rotY: 90, rotZ: 0 },
   ],
 }
 
 const LUU = 'kx-cd3d:moc'
+const KHOA_CHUNG = 'chung'
 
 /* Dãy đã lưu từ builder, nếu có. */
 function docLuu() {
@@ -223,19 +220,21 @@ function docLuu() {
   }
 }
 
-/* Dãy mốc đang dùng cho một viewport: bản lưu > dãy gốc của nó > dãy w1920. */
-function dayMoc(key) {
-  const luu = docLuu()[key]
+/* Dãy mốc đang dùng: bản lưu chung > dãy gốc. (Tham số `key` giữ cho builder
+ * cũ gọi — mọi cỡ màn giờ dùng MỘT dãy.) */
+function dayMoc() {
+  const luu = docLuu()[KHOA_CHUNG]
   if (Array.isArray(luu) && luu.length) return luu.map((m) => ({ ...m }))
-  const goc = MOC[key] || MOC.w1920
-  return goc.map((m) => ({ ...m }))
+  return MOC.chung.map((m) => ({ ...m }))
 }
 
 function chonVp(beRong) {
   return VIEWPORTS.find((p) => beRong >= p.min) || VIEWPORTS[VIEWPORTS.length - 1]
 }
 
-const KHOA = ['w', 'x', 'y', 'dist', 'rotX', 'rotY', 'rotZ']
+// `_B` = toạ độ màn (px thật) của TÂM phần tử neo khi đang ở đúng mốc — tính
+// sẵn trong `doNeo`, nội suy như mọi số khác.
+const KHOA = ['w', 'x', 'y', 'dist', '_B']
 const muotHoa = (k) => k * k * (3 - 2 * k) // smoothstep
 
 /* Góc xoay nội suy bằng QUATERNION (slerp), không cộng trừ từng góc Euler:
@@ -248,25 +247,49 @@ const D2R = Math.PI / 180
 const _qa = new THREE.Quaternion()
 const _qb = new THREE.Quaternion()
 const _ea = new THREE.Euler()
+// Khung vẽ tự nở (`khungVe` trong dung): 8 góc hộp bao máy trong hệ toạ độ
+// CỦA MÁY + một vectơ tạm. Ở mức module vì `dungMay()` chạy đồng bộ ngay lúc
+// dựng — khai `const` trong thân hàm thì gọi trước dòng khai là lỗi TDZ.
+const hopGoc = []
+const _v = new THREE.Vector3()
+/* Hình chữ nhật của CHÍNH chiếc máy trên màn (px thật, chưa cộng lề), ghi
+ * mỗi khung trong `khungVe`. Hiệu ứng khác đọc qua `KX_CD3D.hinhMay` — vd.
+ * kx-cd-glass.js kéo đường sáng kính lỏng theo tâm máy. `hien` = khung này
+ * máy có được vẽ trên màn không. Object cấp sẵn, không cấp phát mỗi khung. */
+const hinhMay = { hien: false, x0: 0, y0: 0, x1: 0, y1: 0 }
 
-/* Tư thế tại một tiến độ cuộn: tìm hai mốc kẹp quanh nó rồi nội suy. */
-function tuThe(day, p) {
+function chep(ra, m) {
+  for (const kh of KHOA) ra[kh] = m[kh] == null ? 0 : m[kh]
+  ra.rotX = m.rotX || 0
+  ra.rotY = m.rotY || 0
+  ra.rotZ = m.rotZ || 0
+  return ra
+}
+
+/* Tư thế tại vị trí cuộn `sy` (px): tìm hai mốc kẹp quanh nó (theo `_s` — vị
+ * trí cuộn của mốc, tính sẵn trong `doNeo`) rồi nội suy. `ra` là object ghi
+ * kết quả — vòng vẽ truyền một object cấp sẵn, không cấp phát mỗi khung. */
+function tuThe(day, sy, ra = {}) {
   if (!day.length) return null
-  if (p <= day[0].at) return { ...day[0] }
+  if (sy <= day[0]._s) return chep(ra, day[0])
   const cuoi = day[day.length - 1]
-  if (p >= cuoi.at) return { ...cuoi }
+  if (sy >= cuoi._s) return chep(ra, cuoi)
   let i = 0
-  while (i < day.length - 1 && day[i + 1].at < p) i++
+  while (i < day.length - 1 && day[i + 1]._s < sy) i++
   const a = day[i]
   const b = day[i + 1]
-  const khoang = Math.max(1e-6, b.at - a.at)
-  let k = (p - a.at) / khoang
-  if (CONFIG.muot) k = muotHoa(k)
-  const ra = {}
+  const khoang = Math.max(1e-6, b._s - a._s)
+  const kThang = (sy - a._s) / khoang
+  const k = CONFIG.muot ? muotHoa(kThang) : kThang
+  /* Hai mốc cùng neo, cùng chỗ so với neo = máy DÍNH VÀO TRANG đoạn này
+   * (builder: "Trôi theo trang tới đây"). Phần tử neo trôi TUYẾN TÍNH theo
+   * cuộn, nên `_B` phải nội suy tuyến tính — làm mềm (smoothstep) thì máy
+   * trượt lệch khỏi chữ ở giữa đoạn. */
+  const dinh = a.neo && a.neo === b.neo && a.y === b.y
   for (const kh of KHOA) {
     const va = a[kh] == null ? 0 : a[kh]
     const vb = b[kh] == null ? va : b[kh]
-    ra[kh] = va + (vb - va) * k
+    ra[kh] = va + (vb - va) * (dinh && kh === '_B' ? kThang : k)
   }
   _qa.setFromEuler(_ea.set((a.rotX || 0) * D2R, (a.rotY || 0) * D2R, (a.rotZ || 0) * D2R, 'XYZ'))
   _qb.setFromEuler(_ea.set((b.rotX || 0) * D2R, (b.rotY || 0) * D2R, (b.rotZ || 0) * D2R, 'XYZ'))
@@ -278,7 +301,7 @@ function tuThe(day, p) {
   return ra
 }
 
-/* Cuộn được bao nhiêu phần trang, 0..1. */
+/* Cuộn được bao nhiêu phần trang, 0..1 — chỉ còn để HIỆN số trong builder. */
 function tienDo() {
   const tran = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
   return Math.min(1, Math.max(0, window.scrollY / tran))
@@ -339,7 +362,12 @@ function dung(deck) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.shadowMap.enabled = S.bongDo
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
-  renderer.domElement.style.cssText = 'width:100%;height:100%;display:block'
+  /* Playground: canvas lấp đầy khung. Home: canvas TỰ NỞ theo hình máy (xem
+   * `khungVe`) — ô `boc` chỉ còn là KHUNG TOẠ ĐỘ vuông của mốc (gizmo của
+   * builder nằm trong nó), canvas được phép tràn ra ngoài ô đó. */
+  renderer.domElement.style.cssText = sanChoi
+    ? 'width:100%;height:100%;display:block'
+    : 'position:absolute;left:0;top:0;display:block'
   boc.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
@@ -530,6 +558,7 @@ function dung(deck) {
     hud.setColor(params.screen.hud.color)
     scene.add(deck.device)
     built = { deck, disc }
+    doHop(deck.device)
     deck.knob.rotation.z = -knob * Math.PI * 4
     // Danh sách vật bấm được, dựng lại mỗi lần dựng máy.
     pickRoots = deck.interactive.map((e) => e.object)
@@ -635,7 +664,9 @@ function dung(deck) {
   }
 
   function chamVao(ev) {
-    const r = boc.getBoundingClientRect()
+    // Theo HỘP CỦA CANVAS (không phải ô `boc`): camera chiếu đúng phần
+    // `setViewOffset` mà canvas đang vẽ.
+    const r = renderer.domElement.getBoundingClientRect()
     if (!r.width || !r.height) return null
     diem.x = ((ev.clientX - r.left) / r.width) * 2 - 1
     diem.y = -((ev.clientY - r.top) / r.height) * 2 + 1
@@ -936,15 +967,13 @@ function dung(deck) {
 
   /* ------------------------------------------------- đặt ô vẽ lên trang */
   let vpKey = chonVp(innerWidth).key
-  let day = dayMoc(vpKey)
+  let day = dayMoc()
   let deTay = null // builder đang ép một tư thế cố định để xem
   let tuTheNay = null
   let canhCu = -1
   let nacCu = -1
+  const tuTheKhung = {} // vòng vẽ ghi tư thế vào đây — không cấp phát mỗi khung
 
-  /* Áp một tư thế lên ô vẽ và camera. Chỉ đụng tới DOM khi cạnh thật sự đổi —
-   * ghi `width`/`height` mỗi khung là ép trình duyệt tính lại layout, đúng
-   * điều cấm trong vòng lặp mỗi khung của project này. */
   /* Tỷ lệ px-thiết-kế → px-màn-hình. ĐO THƯA, không đo mỗi khung:
    * `getBoundingClientRect()` ép trình duyệt tính lại layout ngay tại chỗ, mà
    * đây là vòng chạy mỗi khung trên một trang đang cuộn — đúng điều cấm số 1
@@ -954,18 +983,116 @@ function dung(deck) {
   let vhCache = window.innerHeight
   let demKhung = 0
 
+  /* ----------------------------------------------------------- NEO
+   * Vị trí (toạ độ TRANG) của tâm từng phần tử neo, đo thưa cùng nhịp với tỷ
+   * lệ. Phần tử cố định (`fixed`) không làm neo được — toạ độ trang của nó
+   * đổi theo cuộn. */
+  const neoCache = new Map() // neo -> tâm dọc, px trang
+  function timNeo(neo) {
+    if (!neo || !page) return null
+    try {
+      return /^[.#[]/.test(neo) ? document.querySelector(neo) : page.querySelector('[data-n="' + neo + '"]')
+    } catch (e) {
+      return null
+    }
+  }
+  function doNeo1(neo) {
+    const el = timNeo(neo)
+    if (!el) return null
+    const r = el.getBoundingClientRect()
+    if (!r.width && !r.height) return null
+    const cy = r.top + scrollY + r.height / 2
+    neoCache.set(neo, cy)
+    return cy
+  }
+  // Vị trí cuộn `_s` và tâm-neo-trên-màn `_B` của một mốc (px thật).
+  function tinhMoc(m) {
+    let cy = neoCache.has(m.neo) ? neoCache.get(m.neo) : doNeo1(m.neo)
+    if (cy == null) {
+      // neo mất (dựng lại từ Figma đổi node) — đứng ở cuối trang, không làm sập dãy
+      m._s = m._s == null ? 0 : m._s
+      m._B = m._B == null ? vhCache / 2 : m._B
+      return m
+    }
+    m._B = vhCache / 2 + (m.ny || 0) * uCache
+    m._s = cy - m._B
+    return m
+  }
+  /* Mốc kiểu cũ (`at` + đặt theo % cửa sổ) → mốc neo, theo cỡ màn HIỆN TẠI:
+   * tính chỗ máy đang đứng trên màn theo đúng công thức cũ, chọn phần tử gần
+   * tâm máy nhất ở vị trí cuộn đó làm neo, rồi ghi lại tương đối với nó. */
+  function quyNeo(m) {
+    if (m.neo || m.at == null) return m
+    const tran = Math.max(1, document.documentElement.scrollHeight - vhCache)
+    const sy = m.at * tran
+    const uy = vhCache / 1080
+    const co = m.w * Math.min(uCache, uy)
+    const cx = (m.x + m.w / 2) * uCache
+    const cyMan = (m.y + m.w / 2) * uy
+    const neo = chonNeo(sy + cyMan)
+    const cy = neo ? doNeo1(neo) : null
+    const ra = { ...m }
+    delete ra.at
+    ra.w = Math.round(co / uCache)
+    ra.x = Math.round(cx / uCache - ra.w / 2)
+    if (cy == null) return m
+    ra.neo = neo
+    ra.ny = Math.round((cy - sy - vhCache / 2) / uCache)
+    ra.y = Math.round((cyMan - co / 2 - (cy - sy)) / uCache)
+    return ra
+  }
+  /* Tự chọn neo: phần tử (data-n) có tâm dọc gần `yTrang` nhất, không cố
+   * định, cao dưới `neoMaxCao` cửa sổ. Chạy lúc tạo mốc — không bao giờ mỗi
+   * khung. */
+  function chonNeo(yTrang) {
+    if (!page) return null
+    let tot = null
+    let lech = Infinity
+    const tran = vhCache * (S.neoMaxCao || 0.9)
+    const coDinh = (el) => {
+      for (let e = el; e && e !== page; e = e.parentElement) {
+        if (getComputedStyle(e).position === 'fixed') return true
+      }
+      return false
+    }
+    page.querySelectorAll('[data-n]').forEach((el) => {
+      const r = el.getBoundingClientRect()
+      if (r.width < 4 || r.height < 4 || r.height > tran) return
+      const d = Math.abs(r.top + scrollY + r.height / 2 - yTrang)
+      if (d >= lech - 0.5) return
+      const cs = getComputedStyle(el)
+      if (cs.visibility === 'hidden' || cs.display === 'none' || coDinh(el)) return
+      lech = d
+      tot = el
+    })
+    return tot ? tot.getAttribute('data-n') : null
+  }
+  function sapXep() {
+    day.sort((a, b) => a._s - b._s)
+  }
+  // Đo lại mọi neo + tính lại mọi mốc. Lúc đổi cỡ và 30 khung một lần.
+  function doNeo() {
+    neoCache.clear()
+    for (let i = 0; i < day.length; i++) tinhMoc(day[i])
+    sapXep()
+  }
+
   function doLaiTyLe() {
     uCache = tyLe(moc)
     vhCache = window.innerHeight
+    if (page) doNeo()
   }
 
-  // Ba tỉ lệ px-thiết-kế → px-màn: ngang, dọc, và cỡ máy (khung 16:9 vừa cửa sổ).
+  // px thiết kế → px màn. Mọi trục cùng MỘT hệ số — hệ số của chính nội dung.
   function quy() {
-    const ux = uCache
-    const uy = S.phanTram ? vhCache / 1080 : uCache
-    return { ux, uy, s: S.phanTram ? Math.min(ux, uy) : ux }
+    return { ux: uCache, uy: uCache, s: uCache }
   }
 
+  /* Áp một tư thế lên ô vẽ và camera. Chỉ đụng tới DOM khi cạnh thật sự đổi —
+   * ghi `width`/`height` mỗi khung là ép trình duyệt tính lại layout, đúng
+   * điều cấm trong vòng lặp mỗi khung của project này. */
+  let bocL = 0 // vị trí ô toạ độ trên màn (px thật) — ghi lúc đặt, không đo lại
+  let bocT = 0
   function apTuThe(t) {
     if (!t) return
     tuTheNay = t
@@ -974,47 +1101,215 @@ function dung(deck) {
     const canh = sanChoi
       ? Math.round(san.getBoundingClientRect().width)
       : Math.round(t.w * q.s)
-    /* Cỡ HIỂN THỊ đổi mượt mỗi khung, còn KHUNG VẼ chỉ cấp phát lại theo NẤC.
-     *
-     * `t.w` nội suy liên tục giữa hai mốc (1050 -> 1000 -> 900...) nên mỗi
-     * khung `canh` lệch một hai pixel. Gọi `renderer.setSize()` theo nó là
-     * CẤP PHÁT LẠI TOÀN BỘ KHUNG VẼ GPU MỖI KHUNG — đo được 36 fps khi cuộn.
-     * Canvas vốn khai `width:100%;height:100%` nên cỡ hiển thị và cỡ bộ đệm
-     * tách rời nhau: để trình duyệt kéo giãn bộ đệm cho vừa ô là đủ, mắt
-     * không thấy khác, mà hết hẳn cấp phát mỗi khung. */
     if (canh !== canhCu) {
       canhCu = canh
       boc.style.width = canh + 'px'
       boc.style.height = canh + 'px'
     }
-    const nac = Math.max(1, Math.round(canh / S.nacVe))
-    if (nac !== nacCu) {
-      nacCu = nac
-      const canhVe = nac * S.nacVe
-      // Trần pixel: ô to tới đâu thì khung vẽ cũng không vượt `maxPx`.
-      renderer.setPixelRatio(Math.min(devicePixelRatio, S.maxDpr, S.maxPx / Math.max(1, canhVe)))
-      renderer.setSize(canhVe, canhVe, false)
-      if (composer) composer.setSize(canhVe, canhVe)
-      camera.aspect = 1
-      camera.updateProjectionMatrix()
-    }
-    if (!sanChoi) {
-      // Đặt theo TÂM (xem `phanTram`): tâm tính bằng % rộng / % cao cửa sổ.
-      boc.style.left = Math.round((t.x + t.w / 2) * q.ux - canh / 2) + 'px'
-      boc.style.top = Math.round((t.y + t.w / 2) * q.uy - canh / 2) + 'px'
+    if (sanChoi) {
+      /* Cỡ HIỂN THỊ đổi mượt, KHUNG VẼ chỉ cấp phát lại theo NẤC — gọi
+       * `renderer.setSize()` mỗi khung là cấp phát lại cả khung vẽ GPU mỗi
+       * khung (đo được 36 fps khi cuộn). */
+      const nac = Math.max(1, Math.round(canh / S.nacVe))
+      if (nac !== nacCu) {
+        nacCu = nac
+        const canhVe = nac * S.nacVe
+        renderer.setPixelRatio(Math.min(devicePixelRatio, S.maxDpr, S.maxPx / Math.max(1, canhVe)))
+        renderer.setSize(canhVe, canhVe, false)
+        if (composer) composer.setSize(canhVe, canhVe)
+        camera.aspect = 1
+      }
+    } else {
+      // Ngang tính từ mép trái trang; dọc tính từ tâm phần tử neo trên màn.
+      const l = Math.round(t.x * q.ux)
+      const tp = Math.round(t._B + t.y * q.uy)
+      if (l !== bocL) boc.style.left = (bocL = l) + 'px'
+      if (tp !== bocT) boc.style.top = (bocT = tp) + 'px'
     }
     camera.position.set(0, 0, t.dist)
     camera.lookAt(0, 0, 0)
     camera.updateProjectionMatrix()
   }
 
+  /* ------------------------------------------- KHUNG VẼ TỰ NỞ THEO MÁY
+   * Người dùng chụp máy phóng cận bị "cắt lẹm": canvas cũ đúng bằng ô vuông
+   * của mốc, phóng to / kéo camera lại gần là máy tràn khỏi ô và bị xén.
+   * Nay ô vuông `boc` chỉ còn là KHUNG TOẠ ĐỘ (camera vẫn ngắm như cũ, nên
+   * hình không đổi), còn canvas vẽ đúng phần hình chữ nhật bao quanh hình
+   * chiếu của máy — tràn ra ngoài ô thoải mái — cắt theo mép cửa sổ (không vẽ
+   * phần khuất màn). Camera chỉ render phần đó bằng `setViewOffset`.
+   *
+   * Hình chiếu tính bằng tay, không cấp phát: 8 góc hộp bao (đo MỘT LẦN trong
+   * hệ toạ độ của máy, `doHop`) qua matrixWorld; camera đứng ở (0,0,dist)
+   * nhìn thẳng vào gốc nên ndc = X / ((dist − Z)·tan(fov/2)). Cỡ canvas đổi
+   * theo NẤC `nacVe` (cấp phát lại khung vẽ chỉ khi đổi nấc), vị trí thì mượt.
+   * Trần điểm ảnh tính theo DIỆN TÍCH (`maxPx²`) — canvas giờ có thể chữ nhật
+   * rộng cả màn. */
+  function doHop(dev) {
+    const gx = dev.rotation.x
+    const gy = dev.rotation.y
+    const gz = dev.rotation.z
+    dev.rotation.set(0, 0, 0)
+    dev.updateWorldMatrix(true, true)
+    const h = new THREE.Box3().setFromObject(dev)
+    h.applyMatrix4(dev.matrixWorld.clone().invert())
+    hopGoc.length = 0
+    for (let i = 0; i < 8; i++) {
+      hopGoc.push(new THREE.Vector3(i & 1 ? h.max.x : h.min.x, i & 2 ? h.max.y : h.min.y, i & 4 ? h.max.z : h.min.z))
+    }
+    dev.rotation.set(gx, gy, gz)
+  }
+  let veW = -1
+  let veH = -1
+  let veX = NaN
+  let veY = NaN
+  let anCanvas = false
+  // Trả false = máy nằm hẳn ngoài màn, khỏi vẽ khung này.
+  function khungVe() {
+    if (sanChoi || !built || !hopGoc.length) return true
+    const S2 = Math.max(1, canhCu) // cạnh ô toạ độ, px css
+    const dev = built.deck.device
+    dev.updateWorldMatrix(true, false)
+    const tanH = Math.tan((camera.fov * Math.PI) / 360)
+    const d = camera.position.z
+    let x0 = Infinity
+    let y0 = Infinity
+    let x1 = -Infinity
+    let y1 = -Infinity
+    let sauCam = false
+    for (let i = 0; i < 8; i++) {
+      _v.copy(hopGoc[i]).applyMatrix4(dev.matrixWorld)
+      const sau = d - _v.z
+      if (sau < camera.near) {
+        sauCam = true
+        break
+      }
+      const fx = (_v.x / (sau * tanH) * 0.5 + 0.5) * S2
+      const fy = (-_v.y / (sau * tanH) * 0.5 + 0.5) * S2
+      if (fx < x0) x0 = fx
+      if (fx > x1) x1 = fx
+      if (fy < y0) y0 = fy
+      if (fy > y1) y1 = fy
+    }
+    if (!sauCam) {
+      // boc còn trượt theo parallax (transform) — cộng vào cho đúng chỗ trên màn
+      const dx = px.x * S.parallaxDoi * uCache
+      const dy = px.y * S.parallaxDoi * uCache
+      hinhMay.x0 = bocL + x0 + dx
+      hinhMay.y0 = bocT + y0 + dy
+      hinhMay.x1 = bocL + x1 + dx
+      hinhMay.y1 = bocT + y1 + dy
+    }
+    hinhMay.hien = !sauCam
+    // Lề cho bloom / viền khử răng cưa, và lề parallax (boc còn trượt ±parallaxDoi).
+    const le = S2 * 0.04 + S.parallaxDoi * uCache + 2
+    const vw = document.documentElement.clientWidth
+    if (sauCam) {
+      x0 = -bocL
+      y0 = -bocT
+      x1 = vw - bocL
+      y1 = vhCache - bocT
+    } else {
+      x0 = Math.max(x0 - le, -bocL - le)
+      y0 = Math.max(y0 - le, -bocT - le)
+      x1 = Math.min(x1 + le, vw - bocL + le)
+      y1 = Math.min(y1 + le, vhCache - bocT + le)
+    }
+    if (x1 - x0 < 2 || y1 - y0 < 2) {
+      hinhMay.hien = false
+      if (!anCanvas) {
+        anCanvas = true
+        renderer.domElement.style.visibility = 'hidden'
+      }
+      return false
+    }
+    if (anCanvas) {
+      anCanvas = false
+      renderer.domElement.style.visibility = ''
+    }
+    const nac = S.nacVe
+    const W = Math.ceil((x1 - x0) / nac) * nac
+    const H = Math.ceil((y1 - y0) / nac) * nac
+    if (W !== veW || H !== veH) {
+      veW = W
+      veH = H
+      const tran = Math.sqrt((S.maxPx * S.maxPx) / Math.max(1, W * H))
+      renderer.setPixelRatio(Math.min(devicePixelRatio, S.maxDpr, tran))
+      renderer.setSize(W, H, false)
+      if (composer) composer.setSize(W, H)
+      renderer.domElement.style.width = W + 'px'
+      renderer.domElement.style.height = H + 'px'
+      veX = NaN
+    }
+    // Canh giữa phần cần vẽ trong khung đã làm tròn nấc.
+    const ox = Math.round((x0 + x1) / 2 - W / 2)
+    const oy = Math.round((y0 + y1) / 2 - H / 2)
+    if (ox !== veX || oy !== veY) {
+      veX = ox
+      veY = oy
+      renderer.domElement.style.left = ox + 'px'
+      renderer.domElement.style.top = oy + 'px'
+    }
+    camera.aspect = 1
+    camera.setViewOffset(S2, S2, ox, oy, W, H)
+    return true
+  }
+
+  // Thay cả dãy (mốc cũ quy sang neo), đo neo, xếp theo vị trí cuộn.
+  function napDay(d) {
+    day = d.map((m) => quyNeo({ ...m }))
+    doNeo()
+  }
+
   function doLaiBo() {
-    doLaiTyLe()
     vpKey = chonVp(innerWidth).key
-    day = dayMoc(vpKey)
+    uCache = tyLe(moc)
+    vhCache = window.innerHeight
+    if (page) napDay(dayMoc())
     canhCu = -1
     nacCu = -1
-    apTuThe(deTay || tuThe(day, tienDo()))
+    apTuThe(deTay || (sanChoi ? tuTheSan : tuThe(day, scrollY, tuTheKhung)))
+  }
+
+  /* Mốc MỚI ở vị trí cuộn hiện tại, mang đúng tư thế đang nội suy (không có
+   * cú nhảy). Neo = phần tử gần tâm máy nhất, hoặc `neo` truyền vào. */
+  function taoMoc(neoMuon) {
+    const t = tuThe(day, scrollY, {})
+    if (!t) return null
+    const co = t.w * uCache
+    const cyMan = t._B + t.y * uCache + co / 2 // tâm máy trên màn
+    const neo = neoMuon || chonNeo(scrollY + cyMan)
+    const cy = neo ? doNeo1(neo) : null
+    if (cy == null) return null
+    const m = {
+      neo,
+      ny: Math.round(((cy - scrollY - vhCache / 2) / uCache) * 10) / 10,
+      x: Math.round(t.x),
+      y: 0,
+      w: Math.round(t.w),
+      dist: Math.round(t.dist * 10) / 10,
+      rotX: Math.round(t.rotX * 10) / 10,
+      rotY: Math.round(t.rotY * 10) / 10,
+      rotZ: Math.round(t.rotZ * 10) / 10,
+    }
+    tinhMoc(m)
+    m.y = Math.round((t._B + t.y * uCache - m._B) / uCache)
+    return m
+  }
+
+  /* Đổi neo của một mốc mà KHÔNG xê dịch máy: giữ vị trí cuộn của mốc và
+   * chỗ máy đứng trên màn, chỉ ghi lại ny / y theo phần tử mới. */
+  function doiNeo(m, neo) {
+    const cy = doNeo1(neo)
+    if (cy == null) return false
+    tinhMoc(m)
+    const top = m._B + m.y * uCache
+    const s0 = m._s
+    m.neo = neo
+    m.ny = Math.round(((cy - s0 - vhCache / 2) / uCache) * 10) / 10
+    tinhMoc(m)
+    m.y = Math.round((top - m._B) / uCache)
+    return true
   }
 
   // Playground: một tư thế đứng yên, hơi chếch cho thấy khối.
@@ -1068,7 +1363,10 @@ function dung(deck) {
   function khung() {
     raf = requestAnimationFrame(khung)
     const dt = Math.min(clock.getDelta(), 0.05)
-    if (!trongTam || tat) return
+    if (!trongTam || tat) {
+      hinhMay.hien = false
+      return
+    }
     const t = clock.elapsedTime
     const { deck, disc } = built
 
@@ -1076,7 +1374,7 @@ function dung(deck) {
     // dựng cơ chế riêng.
     const cuon = (scrollY / Math.max(1, innerHeight)) * S.scrollSpin
     if ((demKhung = (demKhung + 1) % 30) === 0) doLaiTyLe()
-    const tw = deTay || (sanChoi ? tuTheSan : tuThe(day, tienDo()))
+    const tw = deTay || (sanChoi ? tuTheSan : tuThe(day, scrollY, tuTheKhung))
     apTuThe(tw)
     const d2r = Math.PI / 180
 
@@ -1140,6 +1438,7 @@ function dung(deck) {
     disc.root.rotation.z -= cuon * Math.PI * 2 * 0.001
     display.update(dt, t)
     hologram.update(t)
+    if (!khungVe()) return
     if (composer) composer.render()
     else renderer.render(scene, camera)
   }
@@ -1151,11 +1450,24 @@ function dung(deck) {
         trongTam = rows[0].isIntersecting
       },
       { rootMargin: '200px' }
-    ).observe(boc)
+      // Theo dõi CANVAS chứ không theo ô toạ độ: máy phóng cận tràn ra ngoài
+      // ô, ô ra khỏi màn mà máy vẫn còn trên màn.
+    ).observe(sanChoi ? boc : renderer.domElement)
   }
   raf = requestAnimationFrame(khung)
 
-  addEventListener('resize', doLaiBo)
+  /* Đổi cỡ: GIỮ dãy đang chạy (có thể là bản nháp của builder), chỉ đo lại
+   * neo + tỷ lệ — mốc neo tự rơi đúng chỗ ở cỡ mới. Ảnh / font nạp xong làm
+   * trang xô thì `load` đo lại một lần. */
+  const doiCo = () => {
+    vpKey = chonVp(innerWidth).key
+    doLaiTyLe()
+    canhCu = -1
+    nacCu = -1
+  }
+  addEventListener('resize', doiCo)
+  addEventListener('load', doiCo)
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(doiCo)
 
   return {
     config: S,
@@ -1212,24 +1524,44 @@ function dung(deck) {
       deTay = t
       if (!t) doLaiBo()
     },
-    // builder gọi: tư thế NỘI SUY của một dãy tại tiến độ cuộn p (0..1)
-    tuTheTai(d, p) {
-      return tuThe(d || day, p)
+    // builder gọi: tư thế NỘI SUY của dãy đang chạy tại vị trí cuộn `sy` (px)
+    tuTheTai(d, sy) {
+      return tuThe(day, sy == null ? scrollY : sy, {})
     },
-    // builder gọi: thay cả dãy đang chạy (chưa ghi xuống localStorage)
+    // builder gọi: thay cả dãy đang chạy (chưa ghi xuống localStorage). Dãy
+    // của builder đã là mốc neo; tính lại `_s`/`_B` rồi xếp theo cuộn.
     datDay(d) {
-      day = d.map((m) => ({ ...m })).sort((a, b) => a.at - b.at)
+      day = d.map((m) => tinhMoc({ ...m }))
+      sapXep()
+    },
+    // builder: vị trí cuộn (px) của một mốc ở cỡ màn hiện tại
+    cuonMoc(m) {
+      return tinhMoc(m)._s
+    },
+    hinhMay, // hình chữ nhật của máy trên màn (px thật), cập nhật mỗi khung
+    taoMoc, // builder: mốc neo mới ở vị trí cuộn này (tư thế đang nội suy)
+    doiNeo, // builder: đổi phần tử neo, máy đứng nguyên chỗ
+    chonNeo,
+    timNeo,
+    // dãy hiện tại sau khi quy mốc cũ sang neo — builder lấy làm bản nháp
+    dayNeo() {
+      return day.map((m) => ({ ...m }))
     },
     luu(key, d) {
       const all = docLuu()
-      all[key] = d.map((m) => ({ ...m })).sort((a, b) => a.at - b.at)
+      all[KHOA_CHUNG] = d.map((m) => {
+        const o = { ...m }
+        delete o._s
+        delete o._B
+        return o
+      })
       try {
         localStorage.setItem(LUU, JSON.stringify(all))
       } catch (e) {}
     },
     xoaLuu(key) {
       const all = docLuu()
-      delete all[key]
+      delete all[KHOA_CHUNG]
       try {
         localStorage.setItem(LUU, JSON.stringify(all))
       } catch (e) {}

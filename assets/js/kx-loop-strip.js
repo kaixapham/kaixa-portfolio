@@ -49,6 +49,20 @@
     thuMuc: 'assets/works/', // đường dẫn TƯƠNG ĐỐI (luật số 5)
     stripY: 3777, // tâm dải theo phương dọc
     tilt: -12.5, // độ nghiêng (âm = dâng lên về bên phải)
+    /* THỨ TỰ LỚP với máy CD 3D (kx-cd3d.js, position fixed, z-index 20) —
+     * người dùng chốt: tới cụm này máy nằm DƯỚI các ảnh đang chạy. `.kx-page`
+     * không tạo lớp chồng riêng nên z-index ở đây so thẳng với máy. Dải ảnh
+     * (+ lớp kính hai mép) lên `zDai`. Chữ LỚN hoà trộn `difference` với ảnh
+     * (số "01." `1:289`, tên dự án `1:341`) lên `zTren` để vẫn đè + hoà vào
+     * dải như cũ (người dùng: "phần chữ vẫn phải hoà trộn vào ảnh như cũ").
+     * PHẢI nâng chính phần tử mang mix-blend-mode, KHÔNG nâng khối cha: z-index
+     * trên cha tạo lớp chồng riêng và cô lập phép hoà trộn — chữ thành trắng
+     * trơn. Chữ BÉ (cụm thông tin, hai nút, hàng chữ đầu) để lớp thường — nằm
+     * DƯỚI máy (người dùng: "phần chữ bé ở dưới máy 3D").
+     * 0 = không đụng thứ tự lớp. */
+    zDai: 21,
+    zTren: 22,
+    tren: '1:289,1:341,1:342,1:343,1:344,1:345', // số "01.", tên dự án + 3 icon cùng dòng — vẽ đè lên dải
     cardW: 476,
     cardH: 476,
     gap: 8, // khe giữa hai thẻ
@@ -215,7 +229,12 @@
     var mask = 'linear-gradient(to right,transparent var(--kx-ls-l),#000 var(--kx-ls-l),#000 calc(100% - var(--kx-ls-l)),transparent calc(100% - var(--kx-ls-l)))'
     return [
       // .kx-ls cao đúng vùng dải (không còn cao 0) để mask-image của kính ăn đúng.
-      '.kx-page .kx-ls{position:absolute;left:0;width:100%;top:' + yTrang(S.stripY, 'giua', -H / 2) + ';height:' + px(H) + ';pointer-events:none}',
+      '.kx-page .kx-ls{position:absolute;left:0;width:100%;top:' + yTrang(S.stripY, 'giua', -H / 2) + ';height:' + px(H) + ';pointer-events:none' +
+        (S.zDai ? ';z-index:' + S.zDai : '') + '}',
+      S.zDai ? '.kx-page .kx-ls-kinh{z-index:' + S.zDai + '}' : '',
+      S.zTren && S.tren
+        ? S.tren.split(',').map(function (n) { return '.kx-page [data-n="' + n.trim() + '"]' }).join(',') + '{z-index:' + S.zTren + '}'
+        : '',
       '.kx-page .kx-ls.is-kinh{-webkit-mask-image:' + mask + ';mask-image:' + mask + '}',
       '.kx-page .kx-ls__xoay{position:absolute;left:50%;top:50%;width:' + px(W0) + ';',
       '  transform:translate(-50%,-50%) rotate(' + S.tilt + 'deg)}',

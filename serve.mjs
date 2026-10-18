@@ -1,7 +1,9 @@
 // Static server cho kaixa Portfolio.
 // Sets the MIME types the page needs (avif, ktx2, wasm, riv, woff2).
 import { createServer } from 'node:http'
-import { createReadStream, statSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { createReadStream, statSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { connect } from 'node:net'
 import { basename, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -74,10 +76,60 @@ function patchKey(src, key, value) {
   return src.replace(re, (_m, head, _old, tail) => head + jsValue(value) + tail)
 }
 
+// ------------------------------------------------------- mở editor CD 3D
+// Nút "Mở editor 3D" trong bảng K (kx-cd3d-builder.js) POST về đây: editor
+// (tools/cd-visualizer) là một dev server Vite riêng ở cổng 3114. Chưa chạy
+// thì bật nó (`npm run dev`, tách khỏi serve.mjs — tắt serve không giết
+// editor), chờ cổng lên rồi trả URL. Bắt header `x-kx-editor` để trang của
+// TÊN MIỀN KHÁC không gọi được (header lạ = phải hỏi preflight, mà server này
+// không trả lời preflight).
+const EDITOR_PATH = '/__kx-editor'
+const EDITOR_DIR = 'tools/cd-visualizer'
+const EDITOR_PORT = 3114
+// Vite trên macOS nghe `localhost` = CHỈ IPv6 ::1 — gõ 127.0.0.1 là tưởng
+// cổng đóng dù editor đang chạy. Thử cả hai.
+function congMo1(port, host) {
+  return new Promise((ok) => {
+    const s = connect(port, host)
+    s.once('connect', () => { s.destroy(); ok(true) })
+    s.once('error', () => ok(false))
+    s.setTimeout(400, () => { s.destroy(); ok(false) })
+  })
+}
+async function congMo(port) {
+  return (await congMo1(port, '127.0.0.1')) || (await congMo1(port, '::1'))
+}
+let dangBatEditor = null
+async function batEditor() {
+  if (await congMo(EDITOR_PORT)) return { ok: true, daChay: true }
+  const dir = join(ROOT, EDITOR_DIR)
+  if (!existsSync(join(dir, 'node_modules'))) {
+    return { ok: false, error: 'editor chưa cài — chạy: npm install --prefix ' + EDITOR_DIR }
+  }
+  if (!dangBatEditor) {
+    dangBatEditor = (async () => {
+      const con = spawn('npm', ['run', 'dev'], { cwd: dir, detached: true, stdio: 'ignore' })
+      con.unref()
+      for (let i = 0; i < 60; i++) {
+        await new Promise((r) => setTimeout(r, 250))
+        if (await congMo(EDITOR_PORT)) return { ok: true, daChay: false }
+      }
+      return { ok: false, error: 'editor không lên ở cổng ' + EDITOR_PORT + ' sau 15 giây' }
+    })().finally(() => { dangBatEditor = null })
+  }
+  return dangBatEditor
+}
+
 createServer((req, res) => {
   const reply = (code, obj) => {
     res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' })
     res.end(JSON.stringify(obj))
+  }
+
+  if (req.method === 'POST' && req.url.split('?')[0] === EDITOR_PATH) {
+    if (req.headers['x-kx-editor'] !== '1') return reply(403, { ok: false, error: 'thiếu header' })
+    batEditor().then((kq) => reply(kq.ok ? 200 : 500, { ...kq, url: 'http://localhost:' + EDITOR_PORT + '/' }))
+    return
   }
 
   if (req.method === 'POST' && req.url.split('?')[0] === UPLOAD_PATH) {

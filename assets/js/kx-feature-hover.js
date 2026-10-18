@@ -82,6 +82,11 @@
     lensColor: '#009dff',
     lensMuot: 0.2, // 0..1 — thấu kính đuổi theo con trỏ mỗi khung 60fps
     lensVao: 0.12, // 0..1 — tốc độ hiện / tắt thấu kính mỗi khung
+    // Ảnh KHÁC cũng ăn đúng thấu kính này khi rê vào (người dùng: "hover vào
+    // ảnh ở đây cũng có hiệu ứng giống ở hero") — selector của chính thẻ <img>.
+    // Mặc định: thẻ ảnh của dải nghiêng chạy vòng cụm "02." (kx-loop-strip.js).
+    // Để trống = chỉ khung ảnh Feature Works.
+    lensThem: '.kx-ls__anh',
   }
 
   var S = CONFIG
@@ -93,6 +98,7 @@
 
   function boot() {
     if (!S.enabled) return
+    ganThem()
     var trai = q(S.trai)
     var phai = q(S.phai)
     var khung = q(S.khung)
@@ -271,6 +277,40 @@
     }
   }
 
+  /* ---------------------------------------------- ảnh khác ăn thấu kính
+   * Ủy quyền trên document theo `lensThem` (thẻ ảnh của dải "02." do
+   * kx-loop-strip.js dựng SAU file này, lại nhân đôi để chạy vòng). MỘT
+   * context WebGL dùng chung cho mọi ảnh: chỉ có một ảnh dưới con trỏ mỗi lúc,
+   * canvas dời sang ảnh mới (`doiCho`). 40 thẻ mà mỗi thẻ một context là vượt
+   * trần ~16 context của trình duyệt. Thẻ ảnh NGHIÊNG và đang TRÔI nên toạ độ
+   * con trỏ lấy theo hệ toạ độ của chính thẻ <img> (offsetX/Y), không theo
+   * hộp bao trên màn. */
+  function ganThem() {
+    if (!S.lensThem) return
+    var kinh = null
+    var dang = null
+    document.addEventListener('pointerover', function (e) {
+      if (!S.lens) return
+      var im = e.target && e.target.closest ? e.target.closest(S.lensThem) : null
+      if (!im || im === dang || im.tagName !== 'IMG' || !im.naturalWidth) return
+      if (!kinh) kinh = dungKinh(im.parentElement, im)
+      if (!kinh) return
+      if (dang) kinh.tatNgay()
+      dang = im
+      kinh.doiCho(im.parentElement, im)
+      kinh.vao(e, im)
+    })
+    document.addEventListener('pointermove', function (e) {
+      if (dang && kinh && e.target === dang) kinh.di(e)
+    }, { passive: true })
+    document.addEventListener('pointerout', function (e) {
+      if (!dang || e.target !== dang) return
+      if (e.relatedTarget && dang.contains(e.relatedTarget)) return
+      dang = null
+      if (kinh) kinh.ra()
+    })
+  }
+
   /* ============================================================ THẤU KÍNH
    * Canvas WebGL2 phủ đúng khung ảnh, chỉ dựng khi con trỏ vào khung lần
    * đầu. Vẽ lại CHÍNH ảnh đang hiện (object-fit: cover, giữa) nên lúc kính
@@ -337,7 +377,9 @@
     '}',
   ].join('\n')
 
-  function dungKinh(hop) {
+  /* `im` (tuỳ chọn): canvas phủ ĐÚNG thẻ ảnh đó trong `hop` thay vì phủ cả
+   * `hop` — thẻ của dải "02." có hàng nhãn phía trên ảnh. */
+  function dungKinh(hop, im) {
     var cv = document.createElement('canvas')
     cv.setAttribute('aria-hidden', 'true')
     cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;z-index:2147483000;visibility:hidden'
@@ -377,7 +419,14 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    hop.appendChild(cv)
+    var khungAnh = im || null
+    function datCho(h, i) {
+      hop = h
+      khungAnh = i || null
+      if (khungAnh && getComputedStyle(hop).position === 'static') hop.style.position = 'relative'
+      hop.appendChild(cv)
+    }
+    datCho(hop, im)
 
     var anhNay = null
     var W = 1
@@ -398,11 +447,22 @@
       if (!isNaN(v)) mau = [((v >> 16) & 255) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255]
     })()
 
-    // Đo khung lúc VÀO (không đo mỗi khung — luật cấm số 1).
+    // Đo khung lúc VÀO (không đo mỗi khung — luật cấm số 1). Cỡ lấy theo
+    // layout (offsetWidth) chứ không theo hộp bao: thẻ nghiêng có hộp bao to hơn.
     function doKhung() {
       var b = hop.getBoundingClientRect()
-      W = Math.max(1, b.width)
-      H = Math.max(1, b.height)
+      if (khungAnh) {
+        W = Math.max(1, khungAnh.offsetWidth)
+        H = Math.max(1, khungAnh.offsetHeight)
+        cv.style.inset = 'auto'
+        cv.style.left = khungAnh.offsetLeft + 'px'
+        cv.style.top = khungAnh.offsetTop + 'px'
+        cv.style.width = W + 'px'
+        cv.style.height = H + 'px'
+      } else {
+        W = Math.max(1, b.width)
+        H = Math.max(1, b.height)
+      }
       dpr = Math.min(window.devicePixelRatio || 1, 2)
       cv.width = Math.round(W * dpr)
       cv.height = Math.round(H * dpr)
@@ -463,12 +523,22 @@
       }
     }
 
+    // Toạ độ con trỏ trong khung: trên chính thẻ ảnh thì offsetX/Y (hệ toạ độ
+    // của thẻ — đúng cả khi thẻ nghiêng), còn lại tính theo hộp bao.
+    function toaDo(e, b) {
+      if (khungAnh && e.target === khungAnh) return [e.offsetX, e.offsetY]
+      b = b || hop.getBoundingClientRect()
+      return [e.clientX - b.left, e.clientY - b.top]
+    }
+
     return {
+      doiCho: datCho,
       vao: function (e, im) {
         var b = doKhung()
         napAnh(im)
-        tx = e.clientX - b.left
-        ty = e.clientY - b.top
+        var p = toaDo(e, b)
+        tx = p[0]
+        ty = p[1]
         if (str < 0.002) {
           mx = tx
           my = ty
@@ -480,9 +550,9 @@
       di: function (e) {
         // Đo hộp theo SỰ KIỆN di chuột (không phải mỗi khung): canvas không làm
         // bẩn layout nên phép đo rẻ, và đúng cả khi trang vừa cuộn.
-        var b = hop.getBoundingClientRect()
-        tx = e.clientX - b.left
-        ty = e.clientY - b.top
+        var p = toaDo(e)
+        tx = p[0]
+        ty = p[1]
       },
       ra: function () {
         trongKhung = false

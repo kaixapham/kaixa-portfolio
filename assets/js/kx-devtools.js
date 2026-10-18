@@ -1079,6 +1079,84 @@
     .dasdev-foot button:hover { background: #292929; }
     .dasdev-foot button.is-primary { background: #ffe94d; border-color: #ffe94d; color: #111; font-weight: 700; }
     .dasdev-foot button.is-primary:hover { background: #ffef77; }
+
+    /* ĐỒNG BỘ VỚI BẢNG H CỦA BỐN TRANG FIGMA (kx-panel.js), người dùng chốt:
+       không có nút nổi trên trang — bấm H mở/đóng (Shift+L vẫn chạy), Esc
+       đóng; cùng nền, viền, chữ Geist Mono, nhấn TRẮNG thay cho vàng, thanh
+       trượt mảnh, công tắc như bên kia. Viết thành lớp đè ở cuối để không phải
+       sửa từng luật cũ. */
+    .dasdev-btn { display: none !important; }
+    .dasdev-panel {
+      right: 16px; bottom: 16px; width: 312px; max-height: calc(100vh - 32px);
+      background: #0b0b0c; color: #e8e8e8; border: 1px solid #2a2a2c; border-radius: 8px;
+      font: 400 11px/1.4 "Geist Mono", ui-monospace, monospace;
+      box-shadow: 0 12px 40px rgba(0,0,0,.6); animation: none;
+    }
+    @media (max-width: 700px), (max-height: 760px) {
+      .dasdev-panel { right: 12px; bottom: 12px; }
+    }
+    .dasdev-head { align-items: center; padding: 12px 12px 10px; border-bottom-color: #1d1d1f; }
+    .dasdev-head strong { font-size: 11px; font-weight: 500; letter-spacing: .04em; color: #fff; }
+    .dasdev-head em { color: #6f6f73; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+    .dasdev-tach, .dasdev-pick, .dasdev-bp-row button {
+      background: #151517; border-color: #2a2a2c; border-radius: 4px; color: #bdbdc2;
+    }
+    .dasdev-tach:hover, .dasdev-pick:hover, .dasdev-bp-row button:hover { border-color: #3d3d41; color: #fff; }
+    .dasdev-bp-row button[aria-pressed='true'] { color: #0b0b0c; background: #fff; border-color: #fff; }
+    .dasdev-warn { background: transparent; color: #d8a24a; border-bottom-color: #3a2f1a; }
+    .dasdev-tabs, .dasdev-bp { padding: 8px 12px; border-bottom-color: #1d1d1f; }
+    .dasdev-tabsel {
+      background: #151517; border-color: #2a2a2c; border-radius: 4px; color: #fff;
+      text-transform: uppercase; letter-spacing: .03em; font-weight: 500;
+    }
+    .dasdev-tabsel:hover { border-color: #3d3d41; }
+    .dasdev-tabsel::after { content: '›'; color: #6f6f73; transform: rotate(90deg); }
+    .dasdev-tablist { background: #0b0b0c; border-color: #2a2a2c; border-radius: 4px; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
+    .dasdev-tablist button { color: #bdbdc2; }
+    .dasdev-tablist button:hover { background: #121214; color: #fff; }
+    .dasdev-tablist button[aria-selected='true'] { color: #0b0b0c; background: #fff; }
+    .dasdev-bp-head b, .dasdev-grp > h6 { color: #6f6f73; font-weight: 400; font-size: 10px; letter-spacing: .06em; }
+    .dasdev-bp-now { color: #55555a; }
+    .dasdev-body { padding: 4px 12px 8px; }
+    .dasdev-mod + .dasdev-mod { border-top-color: #1d1d1f; }
+    .dasdev-mod > h5 { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .03em; color: #fff; }
+    .dasdev-mod > p { color: #55555a; font-family: inherit; }
+    .dasdev-bpsec { border-left-color: #2a2a2c; }
+    .dasdev-bpsec > .dasdev-bpsec-ten { color: #fff; font-weight: 500; }
+    .dasdev-bpsec > .dasdev-bpsec-ten span { color: #6f6f73; font-family: inherit; }
+    .dasdev-row > label { color: #bdbdc2; }
+    .dasdev-row > label b { color: #fff; font-weight: 400; }
+    .dasdev-row select, .dasdev-row input[type=text] {
+      background: #151517; border-color: #2a2a2c; color: #fff;
+    }
+    .dasdev-row select:focus, .dasdev-row input[type=text]:focus { outline: none; border-color: #4a7dff; }
+    .dasdev-row input[type=range] {
+      -webkit-appearance: none; appearance: none; height: 16px; background: transparent; cursor: pointer;
+    }
+    .dasdev-row input[type=range]::-webkit-slider-runnable-track { height: 1px; background: #3a3a3e; }
+    .dasdev-row input[type=range]::-moz-range-track { height: 1px; background: #3a3a3e; }
+    .dasdev-row input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 11px; height: 11px; margin-top: -5px; border-radius: 50%; background: #fff; border: 0;
+    }
+    .dasdev-row input[type=range]::-moz-range-thumb { width: 11px; height: 11px; border-radius: 50%; background: #fff; border: 0; }
+    .dasdev-check { color: #bdbdc2; }
+    .dasdev-check input {
+      -webkit-appearance: none; appearance: none; position: relative; flex: none; width: 30px; height: 16px;
+      border-radius: 8px; background: #2a2a2c; cursor: pointer; transition: background .15s ease;
+    }
+    .dasdev-check input::after {
+      content: ''; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%;
+      background: #8e8e94; transition: transform .15s ease, background .15s ease;
+    }
+    .dasdev-check input:checked { background: #fff; }
+    .dasdev-check input:checked::after { transform: translateX(14px); background: #0b0b0c; }
+    .dasdev-foot { padding: 10px 12px 12px; border-top-color: #1d1d1f; }
+    .dasdev-foot button {
+      background: #151517; color: #bdbdc2; border-color: #2a2a2c; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .dasdev-foot button:hover { background: #151517; color: #fff; border-color: #3d3d41; }
+    .dasdev-foot button.is-primary { background: #fff; border-color: #fff; color: #0b0b0c; font-weight: 500; }
+    .dasdev-foot button.is-primary:hover { background: #e8e8e8; }
   `
   document.head.appendChild(style)
 
@@ -1104,7 +1182,7 @@
   btn.className = 'dasdev-btn'
   btn.setAttribute('aria-expanded', 'false')
   btn.setAttribute('aria-label', 'Bảng tinh chỉnh hiệu ứng')
-  btn.title = 'Tinh chỉnh hiệu ứng (Shift+L)'
+  btn.title = 'Tinh chỉnh hiệu ứng (H)'
   btn.innerHTML = `
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M4 7h10M18 7h2M4 12h3M11 12h9M4 17h8M16 17h4" stroke="currentColor" stroke-width="2" stroke-linecap="square"/>
@@ -1289,10 +1367,10 @@
     el.className = 'dasdev-panel'
     el.innerHTML = `
       <div class="dasdev-head">
-        <strong>Tinh chỉnh</strong>
+        <strong>Settings</strong>
         <span class="dasdev-headr">
           <button type="button" class="dasdev-tach" data-act="tach" title="Tách ra cửa sổ riêng">Tách cửa sổ</button>
-          <em>Shift+L · Esc</em>
+          <em>H · Esc</em>
         </span>
       </div>
       <div class="dasdev-warn" hidden>Đang giữ logo ở một góc cố định — bỏ tick
@@ -1789,7 +1867,11 @@
     const tag = (e.target.tagName || '').toLowerCase()
     if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return
     if (e.key === 'Escape') close()
-    else if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && e.code === 'KeyL') {
+    // H mở/đóng — cùng phím với bảng của bốn trang Figma (kx-panel.js).
+    else if (!e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && (e.key === 'h' || e.key === 'H')) {
+      e.preventDefault()
+      toggle()
+    } else if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && e.code === 'KeyL') {
       e.preventDefault()
       toggle()
     }

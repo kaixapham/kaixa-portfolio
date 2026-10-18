@@ -55,7 +55,7 @@
     // mép bấy nhiêu phần bề ngang màn hình. 0 = thẳng như cũ; dương = mũi tên
     // chỉ theo hướng quét ">"; âm = chữ V ngược "<". Lớp phủ cũng cắt theo
     // đúng đường gấp khúc đó.
-    arrow: 0.2,
+    arrow: 0,
 
     color: '#ffffff', // màu pixel
     rainbow: false, // true = trải cầu vồng theo vị trí, bỏ qua `color`
