@@ -34,6 +34,13 @@
     nhayXoay: 0.45, // độ xoay trên mỗi px kéo (vòng X và Y)
     nacXoay: 15, // giữ Shift: bắt nấc bấy nhiêu độ
     nacDoi: 10, // giữ Shift: bắt nấc bấy nhiêu px thiết kế
+    // KHỐI = MỘT MÀN (người dùng chốt): mỗi mục 'selector|nhãn' là một khối nội
+    // dung phải nằm trọn trong một màn — màn bắt đầu cách đỉnh khối `manLe`
+    // px thiết kế. Các màn khác vẫn chia đều theo cao cửa sổ quanh các neo này.
+    //   .kx-ls-dau = hàng chữ đầu cụm "02." (dải ảnh nghiêng + số lớn + hàng
+    //   thông tin dưới) — cả cụm cao ~940 px thiết kế, lọt một màn.
+    manNeo: '.kx-ls-dau|02.',
+    manLe: 24,
   }
 
   // Các ô số của một mốc. `nhan` là chữ hiện trên bảng.
@@ -250,15 +257,45 @@
    * "+ Mốc ở đây", số trên nút là thứ tự mốc chứ không phải vị trí — khó hiểu.
    * Màn k bắt đầu ở (k−1)·cao cửa sổ; màn cuối luôn là ĐÁY trang (footer). Mốc
    * thuộc màn gần nó nhất, trong phạm vi nửa màn. */
-  function cacMan() {
+  var banMan = null // đệm — đo lại lúc mở bảng, đổi cỡ, chọn màn; KHÔNG mỗi lần cuộn
+  function cacMan(doLai) {
+    if (banMan && !doLai) return banMan
     var vh = window.innerHeight
     var tran = Math.max(1, document.documentElement.scrollHeight - vh)
-    var ra = []
-    for (var y = 0; y < tran - vh * 0.25; y += vh) ra.push(y)
-    ra.push(tran)
-    return ra.map(function (y) {
-      return { y: y, at: +(y / tran).toFixed(3), nua: vh / 2 / tran }
+    var k = tyLe()
+    // Neo: đỉnh khối trong trang, trừ lề — đo một lần ở đây.
+    var neo = []
+    String(CONFIG.manNeo || '').split(',').forEach(function (muc) {
+      var p = muc.split('|')
+      var e = p[0] && document.querySelector(p[0].trim())
+      if (!e) return
+      var y = Math.round(e.getBoundingClientRect().top + window.scrollY - (CONFIG.manLe || 0) * k)
+      if (y > 0 && y < tran) neo.push({ y: y, ten: (p[1] || '').trim() })
     })
+    neo.sort(function (a, b) {
+      return a.y - b.y
+    })
+    // Chia đều theo cao cửa sổ; tới gần một neo (còn dưới nửa màn) thì nhường
+    // chỗ cho neo, rồi chia tiếp từ hết màn neo trở đi.
+    var ra = []
+    var cur = 0
+    neo.forEach(function (n) {
+      while (cur + vh * 0.5 <= n.y) {
+        ra.push({ y: cur })
+        cur += vh
+      }
+      ra.push({ y: n.y, ten: n.ten })
+      cur = n.y + vh
+    })
+    while (cur < tran - vh * 0.25) {
+      ra.push({ y: cur })
+      cur += vh
+    }
+    ra.push({ y: tran, cuoi: true })
+    banMan = ra.map(function (m) {
+      return { y: m.y, ten: m.ten || '', cuoi: !!m.cuoi, at: +(m.y / tran).toFixed(3), nua: vh / 2 / tran }
+    })
+    return banMan
   }
 
   /* Đường kẻ chia màn (người dùng chốt: xanh neon khi bật edit). Một lớp
@@ -274,11 +311,11 @@
     }
     lopMan.textContent = ''
     lopMan.style.height = document.documentElement.scrollHeight + 'px'
-    var ds = cacMan()
+    var ds = cacMan(true)
     ds.forEach(function (man, k) {
       var ke = el('div', 'kx-cdb-man__ke')
       ke.style.top = man.y + 'px'
-      ke.appendChild(el('span', 'kx-cdb-man__so', 'MÀN ' + (k + 1) + (k === ds.length - 1 ? ' · FOOTER' : '')))
+      ke.appendChild(el('span', 'kx-cdb-man__so', 'MÀN ' + (k + 1) + (man.ten ? ' · ' + man.ten : '') + (man.cuoi ? ' · FOOTER' : '')))
       lopMan.appendChild(ke)
     })
   }
@@ -317,14 +354,14 @@
   function veLaiHangMoc() {
     hangMoc.textContent = ''
     hangMoc.appendChild(el('p', 'kx-cdb__moc-ten', 'Màn (1 = đầu trang, cuối = footer) — chấm xanh = có mốc'))
-    var ds = cacMan()
+    var ds = cacMan(true)
     var now = manHienTai(ds)
     var mocChon = day[iMoc]
     ds.forEach(function (man, k) {
       var i = mocCuaMan(ds, k)
       var b = el('button', null, String(k + 1))
       b.type = 'button'
-      b.title = 'Màn ' + (k + 1) + ' — cuộn ' + man.at + (i >= 0 ? ' (có mốc ở ' + day[i].at + ')' : ' (chưa có mốc)')
+      b.title = 'Màn ' + (k + 1) + (man.ten ? ' (' + man.ten + ')' : '') + ' — cuộn ' + man.at + (i >= 0 ? ' (có mốc ở ' + day[i].at + ')' : ' (chưa có mốc)')
       b.classList.toggle('co-moc', i >= 0)
       b.classList.toggle('is-on', i >= 0 && day[i] === mocChon)
       b.classList.toggle('is-now', k === now)
