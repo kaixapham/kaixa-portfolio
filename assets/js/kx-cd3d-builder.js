@@ -37,6 +37,7 @@
     // Chỉnh TẠI CHỖ: có mốc trong chừng này px (css) quanh vị trí cuộn thì sửa
     // mốc đó, không thì sinh mốc mới ngay tại vị trí cuộn.
     ganMoc: 40,
+    canLe: 24, // px thiết kế — lề khi căn Trái/Phải/Trên/Dưới (đúng lề lưới)
   }
 
   // Các ô số của một mốc. `nhan` là chữ hiện trên bảng.
@@ -64,6 +65,9 @@
     '.kx-cdb__vps,.kx-cdb__modes{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:9px}',
     '.kx-cdb__goc{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:9px}',
     '.kx-cdb__goc button{padding:5px 2px;font-size:10px}',
+    '.kx-cdb__lat{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:9px}',
+    '.kx-cdb__lat button{padding:5px 2px;font-size:10px}',
+    '.kx-cdb__lat button:last-child{grid-column:1 / -1}',
     '.kx-cdb__moc{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px}',
     '.kx-cdb__moc button{min-width:30px;position:relative}',
     // Màn đã có mốc: chấm nhỏ góc trên phải. Màn đang đứng: viền xanh (is-now).
@@ -194,10 +198,78 @@
     dev.updateMatrixWorld(true)
     var h = new T.Box3().setFromObject(dev)
     var c = h.getSize(new T.Vector3())
+    // Hộp bao trong hệ toạ độ CỦA MÁY — để căn: chiếu 8 góc qua camera ra
+    // đúng hình máy trên màn hình ở mọi góc xoay.
+    var loc = h.clone().applyMatrix4(dev.matrixWorld.clone().invert())
     dev.rotation.set(gx, gy, gz)
     dev.updateMatrixWorld(true)
-    coMay = { W: c.x, H: c.y, span: Math.max(c.x, c.y) }
+    coMay = { W: c.x, H: c.y, span: Math.max(c.x, c.y), loc: loc }
     return coMay
+  }
+
+  /* Hình chữ nhật của CHÍNH CHIẾC MÁY trên màn hình (px css), không phải ô vẽ
+   * vuông bao quanh — ô vẽ có nhiều khoảng trống nên căn theo ô thì máy trông
+   * vẫn lệch. */
+  function hcnMay() {
+    var T = cd.THREE
+    var k = doMay()
+    var dev = cd.built && cd.built.deck && cd.built.deck.device
+    if (!k || !dev) return null
+    dev.updateMatrixWorld(true)
+    var r = cd.boc.getBoundingClientRect()
+    var a = k.loc.min
+    var b = k.loc.max
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+    for (var i = 0; i < 8; i++) {
+      var p = new T.Vector3(i & 1 ? b.x : a.x, i & 2 ? b.y : a.y, i & 4 ? b.z : a.z)
+      p.applyMatrix4(dev.matrixWorld)
+      var q = chieu(p) // 0..100 trong ô vẽ
+      var sx = r.left + (q.x / 100) * r.width
+      var sy = r.top + (q.y / 100) * r.height
+      if (sx < x0) x0 = sx
+      if (sx > x1) x1 = sx
+      if (sy < y0) y0 = sy
+      if (sy > y1) y1 = sy
+    }
+    return { x0: x0, y0: y0, x1: x1, y1: y1 }
+  }
+
+  /* Lật nhanh: xoay `goc` độ quanh trục của máy. xoayQuanhTruc() đảo dấu vòng
+   * Y (cho khớp chiều kéo trên vòng) — nút thì muốn đúng chiều dương thật nên
+   * đảo lại trước khi gọi. */
+  function lat(tay, goc) {
+    var m = mocDeSua()
+    if (!m) return
+    xoayQuanhTruc(tay, tay === 'rotY' ? -goc : goc, Object.assign({}, m))
+    nhay('Lật ' + tay.slice(-1) + ' ' + goc + '° → X ' + m.rotX + '°, Y ' + m.rotY + '°, Z ' + m.rotZ + '°')
+  }
+
+  /* CĂN (người dùng: "thêm align giữa cho vật thể, đỡ phải kéo tay"): dời
+   * x / y của mốc TẠI CHỖ sao cho hình máy trên màn hình nằm giữa / sát lề
+   * (`canLe` px thiết kế, đúng lề lưới 24). Quy px màn hình về px thiết kế. */
+  function can(kieu) {
+    var h = hcnMay()
+    if (!h) return
+    var m = mocDeSua()
+    if (!m) return
+    var u = tyLe()
+    var vw = document.documentElement.clientWidth
+    var vh = window.innerHeight
+    var le = (CONFIG.canLe || 0) * u
+    var dx = 0
+    var dy = 0
+    if (kieu === 'giuaNgang' || kieu === 'giua') dx = vw / 2 - (h.x0 + h.x1) / 2
+    if (kieu === 'giuaDoc' || kieu === 'giua') dy = vh / 2 - (h.y0 + h.y1) / 2
+    if (kieu === 'trai') dx = le - h.x0
+    if (kieu === 'phai') dx = vw - le - h.x1
+    if (kieu === 'tren') dy = le - h.y0
+    if (kieu === 'duoi') dy = vh - le - h.y1
+    if (dx) m.x = kep(Math.round(m.x + dx / u), oTheo.x)
+    if (dy) m.y = kep(Math.round(m.y + dy / u), oTheo.y)
+    apNgay()
+    veLaiO()
+    veLaiNote()
+    nhay('Căn ' + ({ giuaNgang: 'giữa ngang', giuaDoc: 'giữa dọc', giua: 'giữa màn', trai: 'trái', phai: 'phải', tren: 'trên', duoi: 'dưới' })[kieu] + ' → x ' + m.x + ', y ' + m.y)
   }
 
   function datGoc(g) {
@@ -987,6 +1059,57 @@
       hangGoc.appendChild(b)
     })
     bang.appendChild(hangGoc)
+
+    // CĂN theo hình máy thật trên màn hình
+    var hangCan = el('div', 'kx-cdb__goc')
+    ;[
+      // Tên có mũi tên: hàng góc nhìn ở trên cũng có "Trái/Phải/Trên/Dưới".
+      ['trai', '⇤ Trái'], ['giuaNgang', 'Giữa ↔'], ['phai', 'Phải ⇥'], ['giua', '⊕ Giữa màn'],
+      ['tren', '⤒ Trên'], ['giuaDoc', 'Giữa ↕'], ['duoi', '⤓ Dưới'],
+    ].forEach(function (p) {
+      var b = el('button', null, p[1])
+      b.type = 'button'
+      b.title = 'Căn máy (hình nhìn thấy, không phải ô vẽ) — sửa mốc tại chỗ'
+      b.addEventListener('click', function () {
+        can(p[0])
+      })
+      hangCan.appendChild(b)
+    })
+    bang.appendChild(el('p', 'kx-cdb__moc-ten', 'Căn máy theo màn hình (lề ' + CONFIG.canLe + ' px thiết kế)'))
+    bang.appendChild(hangCan)
+
+    // LẬT NHANH 90° / 180° quanh trục CỦA MÁY (người dùng: "thêm các nút lật
+    // 90, 180 độ") — cùng cách tính với vòng gizmo nên không dính khoá gimbal.
+    var hangLat = el('div', 'kx-cdb__lat')
+    ;[
+      ['rotX', -90, 'X −90'], ['rotX', 90, 'X +90'], ['rotX', 180, 'X 180'],
+      ['rotY', -90, 'Y −90'], ['rotY', 90, 'Y +90'], ['rotY', 180, 'Y 180'],
+      ['rotZ', -90, 'Z −90'], ['rotZ', 90, 'Z +90'], ['rotZ', 180, 'Z 180'],
+    ].forEach(function (p) {
+      var b = el('button', null, p[2])
+      b.type = 'button'
+      b.title = 'Xoay máy ' + p[1] + '° quanh trục ' + p[0].slice(-1) + ' của chính nó — sửa mốc tại chỗ'
+      b.addEventListener('click', function () {
+        lat(p[0], p[1])
+      })
+      hangLat.appendChild(b)
+    })
+    var b0 = el('button', null, 'Về 0°')
+    b0.type = 'button'
+    b0.title = 'Trả cả ba góc xoay về 0'
+    b0.addEventListener('click', function () {
+      var m = mocDeSua()
+      if (!m) return
+      m.rotX = 0
+      m.rotY = 0
+      m.rotZ = 0
+      apNgay()
+      veLaiO()
+      nhay('Góc xoay về 0°')
+    })
+    hangLat.appendChild(b0)
+    bang.appendChild(el('p', 'kx-cdb__moc-ten', 'Lật nhanh (quanh trục của máy)'))
+    bang.appendChild(hangLat)
 
     hangMoc = el('div', 'kx-cdb__moc')
     bang.appendChild(hangMoc)
