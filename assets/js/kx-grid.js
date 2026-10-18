@@ -17,6 +17,11 @@
 (function () {
   'use strict'
 
+  // File LÀM VIỆC: chỉ chạy trên máy (localhost). Bản live (Vercel, GitHub
+  // Pages) không có bảng, không có phím tắt — người dùng chốt. Thêm ?live vào
+  // URL để xem thử như bản live ngay trên máy.
+  if (!/^(localhost|127\.0\.0\.1|\[::1\]|.+\.localhost)$/.test(location.hostname) || /[?&]live\b/.test(location.search)) return
+
   var CONFIG = {
     enabled: true,
     phim: 'g',

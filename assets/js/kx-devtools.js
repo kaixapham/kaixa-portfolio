@@ -12,6 +12,11 @@
 (() => {
   'use strict'
 
+  // File LÀM VIỆC: chỉ chạy trên máy (localhost). Bản live (Vercel, GitHub
+  // Pages) không có bảng, không có phím tắt — người dùng chốt. Thêm ?live vào
+  // URL để xem thử như bản live ngay trên máy.
+  if (!/^(localhost|127\.0\.0\.1|\[::1\]|.+\.localhost)$/.test(location.hostname) || /[?&]live\b/.test(location.search)) return
+
   // Trang studio đặt window.KX_DEVTOOLS_STORE trước khi nạp file này để tinh
   // chỉnh trên một bộ nhớ riêng, không đụng vào giá trị đang chạy ở site chính.
   const STORE_KEY = window.KX_DEVTOOLS_STORE || 'kx-devtools'
@@ -80,6 +85,8 @@
             // phóng to là chúng nở ra hai bên chứ không bao giờ chạm nhau.
             { k: 'discSize', label: 'Đường kính đĩa', type: 'range', min: 300, max: 1600, step: 1 },
             { k: 'discGap', label: 'Khe hở giữa hai đĩa', type: 'range', min: 0, max: 400, step: 1 },
+            { k: 'discFitBelow', label: 'Màn hẹp hơn (px) thì co đĩa vừa ngang', type: 'range', min: 0, max: 3840, step: 10 },
+            { k: 'discFitPad', label: 'Lề hai bên khi co', type: 'range', min: 0, max: 200, step: 1 },
             { k: 'discY', label: 'Tâm đĩa (dọc)', type: 'range', min: 200, max: 900, step: 0.5 },
             { k: 'discBadgeDX', label: 'Vòng nhãn lệch ngang', type: 'range', min: -40, max: 40, step: 0.5 },
             { k: 'discBadgeW', label: 'Vòng nhãn — rộng', type: 'range', min: 0, max: 300, step: 1 },

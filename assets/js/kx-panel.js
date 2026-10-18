@@ -28,6 +28,11 @@
 ;(function () {
   'use strict'
 
+  // File LÀM VIỆC: chỉ chạy trên máy (localhost). Bản live (Vercel, GitHub
+  // Pages) không có bảng, không có phím tắt — người dùng chốt. Thêm ?live vào
+  // URL để xem thử như bản live ngay trên máy.
+  if (!/^(localhost|127\.0\.0\.1|\[::1\]|.+\.localhost)$/.test(location.hostname) || /[?&]live\b/.test(location.search)) return
+
   /* ------------------------------------------------------------------ MỤC
    * type: 'range' (mặc định) | 'toggle' | 'color' | 'chon' (danh sách chọn,
    * `chon: [[giá trị, nhãn], …]`, giá trị là chuỗi). `nhom` là dòng tiêu đề nhỏ chia cụm.
@@ -148,6 +153,35 @@
         { nhom: 'Con trỏ' },
         { key: 'conTro', nhan: 'Ô con trỏ', type: 'toggle' },
         { key: 'mauConTro', nhan: 'Màu con trỏ', type: 'color' },
+      ],
+    },
+    {
+      id: 'video-hover',
+      ten: 'Video Hover',
+      mota: 'Video đĩa đầu trang About: rê vào thì từng khối pixel bị đẩy theo hướng chuột rồi nhả dần, cộng kính lỏng bám 4 mép (như hover ảnh dự án ở Home).',
+      api: 'KX_VIDEO_HOVER',
+      file: 'assets/js/kx-video-hover.js',
+      trang: 'about',
+      truong: [
+        { nhom: 'Pixel distort' },
+        { key: 'pixel', nhan: 'Pixel distort', type: 'toggle' },
+        { key: 'luoi', nhan: 'Số ô ngang', min: 6, max: 80, step: 1, goiY: 'ít ô = khối to' },
+        { key: 'banKinh', nhan: 'Bán kính ảnh hưởng', min: 0.05, max: 0.6, step: 0.01 },
+        { key: 'luc', nhan: 'Lực đẩy', min: 0, max: 3, step: 0.05 },
+        { key: 'nha', nhan: 'Nhả chậm', min: 0.5, max: 0.99, step: 0.01, goiY: 'lớn = khối trôi về lâu hơn' },
+        { key: 'toiDa', nhan: 'Lệch tối đa', min: 5, max: 200, step: 1, don: 'px' },
+        { key: 'tachPx', nhan: 'Tách màu theo hướng đẩy', min: 0, max: 0.5, step: 0.01 },
+        { nhom: 'Kính lỏng' },
+        { key: 'kinh', nhan: 'Kính lỏng', type: 'toggle' },
+        { key: 'lensBand', nhan: 'Độ sâu dải kính', min: 0.04, max: 0.4, step: 0.01 },
+        { key: 'lensBend', nhan: 'Bẻ hình sát mép', min: 0, max: 80, step: 1, don: 'px' },
+        { key: 'lensZoom', nhan: 'Phóng về con trỏ', min: 0, max: 0.2, step: 0.005 },
+        { key: 'lensDisp', nhan: 'Tách đỏ/lam', min: 0, max: 20, step: 0.5, don: 'px' },
+        { key: 'lensWave', nhan: 'Gợn dọc mép', min: 0, max: 0.4, step: 0.01 },
+        { key: 'lensRim', nhan: 'Viền sáng', min: 0, max: 2, step: 0.05 },
+        { key: 'lensColor', nhan: 'Màu quầng', type: 'color' },
+        { key: 'lensMuot', nhan: 'Đuổi con trỏ', min: 0.02, max: 1, step: 0.01 },
+        { key: 'lensVao', nhan: 'Tốc độ hiện/tắt', min: 0.02, max: 1, step: 0.01 },
       ],
     },
     {

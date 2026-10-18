@@ -23,11 +23,6 @@ node serve.mjs 4200
 Phải mở qua server tĩnh, không mở thẳng `file://` — trang dùng `fetch` cho font
 và WebGL đọc texture từ ảnh.
 
-## Phím tắt khi xem
-
-- `H` — bảng setting của trang (chỉ để xem số; nút Lưu chỉ chạy trên máy)
-- `G` — lưới 12 cột
-- `K` (Home) — bảng chỉnh máy CD 3D
 
 ## Vercel
 

@@ -128,6 +128,12 @@
     // bên trái/phải chứ không lấn vào nhau.
     discSize: 1056, // đường kính (px thiết kế)
     discGap: 6, // khe hở giữa hai đĩa; đặt 0 = chạm nhau đúng như bản Figma
+    // Màn BÉ: ưu tiên thấy TRỌN chiều ngang hai đĩa (người dùng chốt). Bản
+    // thiết kế cho đĩa tràn hai mép (2 × 1056 + 6 > 1920); dưới ngưỡng bề rộng
+    // này (px CSS của cửa sổ) đĩa co lại vừa khít, cách mép `discFitPad`.
+    // 0 = không bao giờ co.
+    discFitBelow: 1600,
+    discFitPad: 24, // px thiết kế
     discY: 540.5, // tâm theo trục dọc, dùng chung
     discBadgeW: 106, // vòng nhãn giữa đĩa trái
     discBadgeH: 107,
@@ -271,10 +277,13 @@
 
     // Hai đĩa: tâm suy ra từ đường kính + khe hở, đối xứng qua tâm trang. Phóng
     // to đĩa thì chúng nở ra hai bên, khe giữa giữ nguyên nên không bao giờ chạm.
-    const half = Math.max(0, S.discSize) / 2
-    const gap = Math.max(0, S.discGap) / 2
-    const discL = S.designW / 2 - gap - half
-    const discR = S.designW / 2 + gap + half
+    // Đường kính là biến --ds (độ dài): màn bé thì kẹp lại cho vừa bề ngang.
+    // Tâm đĩa và vòng nhãn đều tính THEO --ds nên co cùng nhau.
+    const dsz = Math.max(1, S.discSize)
+    const gap = e(Math.max(0, S.discGap) / 2)
+    const discL = `calc(50% - ${gap} - var(--ds) / 2)`
+    const discR = `calc(50% + ${gap} + var(--ds) / 2)`
+    const ds = (px) => `calc(var(--ds) * ${+(px / dsz).toFixed(6)})`
 
     // Cụm player xếp quanh đường kẻ. Toạ độ dưới đây tính theo mép trên của cụm.
     // Khoảng cách đường kẻ so với mép trên là hằng số (lấy mốc y=24 của bản
@@ -328,10 +337,12 @@ html[data-hm],html[data-hm] body{margin:0;padding:0;height:100%;overflow:hidden}
  * nên toạ độ tính từ tâm trang chứ không phải từ cạnh. */
 .hm-discs{position:absolute;inset:0;mix-blend-mode:difference;z-index:1}
 .hm-disc,.hm-badge{position:absolute;top:${cy(S.discY)};transform-origin:50% 50%;will-change:transform}
-.hm-disc{width:${e(S.discSize)};height:${e(S.discSize)};cursor:${S.discClickToPlay ? 'pointer' : 'default'}}
-.hm-disc--l{left:${cx(discL)}}
-.hm-disc--r{left:${cx(discR)}}
-.hm-badge{left:${cx(discL + S.discBadgeDX)};width:${e(S.discBadgeW)};height:${e(S.discBadgeH)};pointer-events:none}
+.hm{--ds:${e(dsz)}}${S.discFitBelow > 0 ? `
+@media (max-width:${S.discFitBelow}px){.hm{--ds:min(${e(dsz)}, calc((100vw - ${e(2 * S.discFitPad)} - ${e(Math.max(0, S.discGap))}) / 2))}}` : ''}
+.hm-disc{width:var(--ds);height:var(--ds);cursor:${S.discClickToPlay ? 'pointer' : 'default'}}
+.hm-disc--l{left:${discL}}
+.hm-disc--r{left:${discR}}
+.hm-badge{left:calc(${discL} + ${ds(S.discBadgeDX)});width:${ds(S.discBadgeW)};height:${ds(S.discBadgeH)};pointer-events:none}
 .hm-poster{position:absolute;left:50%;top:${cy(741)};width:${e(177.88)};height:${e(250.761)};transform:translateX(-50%);z-index:2;object-fit:cover}
 
 /* --------------------------------------------------------- cụm trái, trên */
@@ -1046,7 +1057,7 @@ html[data-hm],html[data-hm] body{margin:0;padding:0;height:100%;overflow:hidden}
     'titleX','titleW','titleGap',
     'playerY','ruleY','specGapRule','sqGapRule','ctrlGapRule',
     'specX','specW','specH','feedRight','feedW','feedGap','feedFade',
-    'discSize','discGap','discY','discBadgeW','discBadgeH','discBadgeDX','discClickToPlay',
+    'discSize','discGap','discFitBelow','discFitPad','discY','discBadgeW','discBadgeH','discBadgeDX','discClickToPlay',
     'colorBg','colorDim','colorWhite','colorDisplay','colorHairline','colorBox',
   ]
   // Những key đổi thì phải dựng lại cả cây DOM
