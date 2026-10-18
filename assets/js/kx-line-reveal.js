@@ -30,7 +30,10 @@
 
   var CONFIG = {
     enabled: true,
-    doan: '305:4884', // node Figma của đoạn chữ (cách nhau dấu phẩy)
+    // node Figma của đoạn chữ (cách nhau dấu phẩy) — About "Passionate about…",
+    // Home "Kaixa (Dung Pham) is a designer…" (người dùng: "cái này cũng có
+    // text effect reveal giống ở trang about"). Node không có trên trang thì bỏ qua.
+    doan: '305:4884,1:242',
     /* BA MÀU (người dùng chốt "dải shape chia ra 3 màu: trắng, xám, xám
      * đậm", hai cơ chế):
      *   'lop'  — LỚP NỐI ĐUÔI: mỗi dòng 3 thanh chồng nhau, mọc lần lượt
@@ -40,15 +43,15 @@
      *            mau1 / mau2 / mau3 theo dòng. */
     kieu: 'lop',
     mau1: '#ffffff', // trắng (màu của bản Figma)
-    mau2: '#9a9a9a', // xám
-    mau3: '#4d4d4d', // xám đậm
+    mau2: '#5e5e5e', // xám
+    mau3: '#1c1c1c', // xám đậm
     lechLop: 110, // ms — lớp sau mọc / thu chậm hơn lớp trước bấy nhiêu
     dem: 2, // px — thanh lấn thêm ra ngoài hộp nét chữ mỗi phía
     lanTren: 2, // px — thanh được lấn lên trên đỉnh hộp đoạn văn tối đa bấy nhiêu
-    vaoMs: 520, // pha 1: thanh mọc phủ dòng
-    raMs: 680, // pha 2: thanh rút về đầu dòng
-    nghiMs: 60, // nghỉ giữa hai pha
-    tre: 40, // ms lệch nhịp giữa hai dòng liền nhau
+    vaoMs: 660, // pha 1: thanh mọc phủ dòng
+    raMs: 520, // pha 2: thanh rút về đầu dòng
+    nghiMs: 0, // nghỉ giữa hai pha
+    tre: 110, // ms lệch nhịp giữa hai dòng liền nhau
     // TRÊN NHANH DƯỚI CHẬM (người dùng chốt): dòng thứ i (tính từ dòng chạy
     // trước) kéo dài thêm i × cham — cả pha mọc lẫn pha thu.
     cham: 0.22,
@@ -75,6 +78,15 @@
       '.kx-page .kx-lr-an{opacity:0}',
     ].join('\n')
     document.head.appendChild(st)
+
+    // Mỗi đoạn một hàm chạy lại; "Chạy thử" chạy lại mọi đoạn trên trang.
+    var chayLaiHet = []
+    api.chayLai = function () {
+      chayLaiHet.forEach(function (f) {
+        f()
+      })
+    }
+    api.rungThu = api.chayLai
 
     S.doan.split(',').forEach(function (id) {
       var p = page.querySelector('[data-n="' + id.trim() + '"]')
@@ -251,15 +263,12 @@
       addEventListener('resize', function () {
         if (!dangChay && daChay) tatHet()
       })
-      api.rungThu = function () {
-        api.chayLai()
-      }
-      api.chayLai = function () {
+      chayLaiHet.push(function () {
         tatHet()
         daChay = false
         dangChay = false
         chay()
-      }
+      })
     }
   }
 

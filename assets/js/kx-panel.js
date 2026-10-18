@@ -135,9 +135,8 @@
       id: 'type-hover',
       file: 'assets/js/kx-type-hover.js',
       ten: 'Text Hover',
-      mota: 'Cột chữ mono đầu trang About, TỪNG DÒNG: rê vào thì thanh sáng mọc sau chữ (như Feature Works ở Home), dòng gõ lại (mép ngẫu nhiên, chốt dần) + ô con trỏ; rời ra thanh thụt về thành sóng.',
+      mota: 'Mọi chữ body (Geist Mono viết hoa) ở cả bốn trang, TỪNG DÒNG: rê vào thì thanh sáng mọc sau chữ (như Feature Works ở Home), dòng gõ lại (mép ngẫu nhiên, chốt dần) + ô con trỏ; rời ra thanh thụt về thành sóng.',
       api: 'KX_TYPE_HOVER',
-      trang: 'about',
       truong: [
         { nhom: 'Gõ lại' },
         { key: 'nhipMs', nhan: 'Nhịp gõ', min: 10, max: 150, step: 5, don: 'ms' },
@@ -188,9 +187,8 @@
       id: 'line-reveal',
       file: 'assets/js/kx-line-reveal.js',
       ten: 'Text Reveal',
-      mota: 'Đoạn "Passionate about…" ở About: thanh màu mọc từ trái phủ từng dòng, chữ hiện, thanh thu về phía phải. Trên nhanh dưới chậm.',
+      mota: 'Đoạn "Passionate about…" ở About và "Kaixa (Dung Pham)…" ở Home: thanh màu mọc từ trái phủ từng dòng, chữ hiện, thanh thu về phía phải. Trên nhanh dưới chậm.',
       api: 'KX_LINE_REVEAL',
-      trang: 'about',
       rung: true,
       nutThu: 'Chạy thử',
       truong: [

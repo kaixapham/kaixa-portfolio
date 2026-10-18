@@ -1,6 +1,6 @@
 /* =============================================================================
  * kaixa Portfolio — Rê vào TỪNG DÒNG chữ mono: thanh sáng + gõ lại + con trỏ
- * (About)
+ * (bốn trang Figma)
  * -----------------------------------------------------------------------------
  * Người dùng: "hover text effect chỗ này làm theo trang này" (một trang tham
  * khảo có danh sách bài hát: rê vào dòng nào thì dòng đó GÕ LẠI và hiện một ô
@@ -32,8 +32,20 @@
 
   var CONFIG = {
     enabled: true,
-    // Đoạn nào ăn hiệu ứng: mọi <p> trong cột chữ mono đầu trang About.
+    /* Đoạn nào ăn hiệu ứng. Người dùng chốt: "mọi text body cùng style áp
+     * dụng text hover" — TỰ TÌM mọi <p> chữ thuần trong .kx-page có đúng kiểu
+     * chữ body: font `font`, viết hoa, cỡ coMin..coMax px THIẾT KẾ. Cộng thêm
+     * mọi <p> khớp `chon` (cột mono đầu trang About có sẵn từ trước). */
+    tuDong: true,
     chon: '[data-n="305:4909"] p',
+    font: 'Geist Mono',
+    coMin: 12,
+    coMax: 16,
+    /* Loại: chữ do script khác ghi lại lúc chạy (thanh nav 1:463, cụm thông
+     * tin của dải "02." 1:336 — tách dòng là chúng ghi vào text node đã rời
+     * trang), danh sách Feature Works có hover riêng, link / nút. */
+    bo: '[data-n="1:463"],[data-n="1:336"],[data-n="1:205"],[data-n="1:217"],.kx-ls,a,button',
+    boChu: 'EMAIL ME||EXPLORE||LIVE SITE', // chữ nút — đã có hiệu ứng xáo của kx-pixel-hover.js
     nhipMs: 45, // ms mỗi nhịp gõ
     buoc: 1, // mép GÕ tiến bao nhiêu kí tự mỗi nhịp (tối thiểu)
     maxMs: 700, // trần thời gian gõ một dòng — dòng dài tự gõ nhiều kí tự mỗi nhịp
@@ -76,18 +88,63 @@
         '.kx-th-d::after{content:"";display:inline-block;width:.6em;height:.78em;margin:0 -.75em 0 .15em;',
         '  vertical-align:baseline;background:var(--kx-th-ct,#040203);opacity:0}',
         '.kx-th-d.co-ct.is-on::after{opacity:1}',
+        '.kx-th-d.kx-th-phai{margin-left:auto}',
+        '.kx-th-d.kx-th-giua{margin-left:auto;margin-right:auto}',
+        // line-height 0: hộp dòng cao 0 — nới hộp bắt chuột (không xô bố cục),
+        // thanh sáng canh theo TÂM dòng thay vì theo hộp.
+        // Bù TOÀN BỘ ở margin dưới (margin âm hai dòng liền nhau gộp thành
+        // MỘT nên chia đôi trên/dưới thì mỗi chỗ nối dòng dư một phần) rồi
+        // kéo hộp lên bằng top — chữ đứng đúng chỗ cũ.
+        '.kx-th-d.kx-th-thap{padding:var(--kx-th-pad) 0;margin:0 0 calc(var(--kx-th-pad) * -2);top:calc(var(--kx-th-pad) * -1)}',
+        '.kx-th-d.kx-th-thap::before{top:calc(50% - .6em);bottom:calc(50% - .56em)}',
       ].join('\n')
     }
     css()
     document.head.appendChild(st)
 
-    var doan = [] // { p, goc } — chữ gốc để dựng lại khi đổi cỡ
-    document.querySelectorAll(S.chon).forEach(function (p) {
+    var doan = [] // { p, goc, phai } — chữ gốc để dựng lại khi đổi cỡ
+    var page = document.querySelector('.kx-page')
+    function laBody(p) {
+      if (p.childNodes.length !== 1 || p.firstChild.nodeType !== 3) return false // chỉ chữ thuần
+      if (S.bo && p.closest(S.bo)) return false
+      var t = p.textContent.replace(/\s+/g, ' ').trim()
+      if (!t || (S.boChu && S.boChu.split('||').indexOf(t) !== -1)) return false
+      var cs = getComputedStyle(p)
+      if (cs.fontFamily.indexOf(S.font) === -1 || cs.textTransform !== 'uppercase') return false
+      var k = page ? page.offsetWidth / 1920 : 1 // px màn mỗi px thiết kế
+      var co = parseFloat(cs.fontSize) / k
+      return co >= S.coMin && co <= S.coMax
+    }
+    function thieu(cs) {
+      var fs = parseFloat(cs.fontSize)
+      var lh = cs.lineHeight === 'normal' ? fs * 1.2 : parseFloat(cs.lineHeight) || 0
+      var pad = (fs - lh) / 2
+      return pad > 0.3 ? pad : 0
+    }
+    function them(p) {
+      for (var i = 0; i < doan.length; i++) if (doan[i].p === p) return
       var goc = p.textContent
-      if (!goc.replace(/\s|​/g, '')) return // dòng trống / chỉ kí tự rộng 0
-      doan.push({ p: p, goc: goc })
-    })
-    if (!doan.length) return
+      if (!goc.replace(/\s|\u200b/g, '')) return // dòng trống / chỉ kí tự rộng 0
+      var cs = getComputedStyle(p)
+      var canh = cs.textAlign
+      doan.push({
+        p: p,
+        goc: goc,
+        canh: canh === 'right' || canh === 'end' ? 'phai' : canh === 'center' ? 'giua' : '',
+        // line-height THẤP hơn cỡ chữ (Figma hay dùng, có chỗ = 0): hộp dòng
+        // thấp hơn nét chữ. Nới hộp bắt chuột ĐÚNG phần thiếu — nửa hiệu cỡ
+        // chữ và line-height — bằng padding + margin âm, bố cục không xê dịch.
+        // Nới nhiều hơn thì vùng của dòng dưới chồng lên dòng trên: rê dòng
+        // giữa lại sáng dòng dưới.
+        thap: thieu(cs),
+      })
+    }
+    function gom() {
+      document.querySelectorAll(S.chon).forEach(them)
+      if (S.tuDong && page) page.querySelectorAll('p').forEach(function (p) {
+        if (laBody(p)) them(p)
+      })
+    }
 
     /* Tách một <p> thành các dòng HIỂN THỊ: trả chữ gốc về, đo đỉnh của từng
      * từ, gom các từ cùng đỉnh thành một dòng, rồi thay nội dung <p> bằng các
@@ -95,6 +152,7 @@
     function tach(o) {
       var p = o.p
       p.textContent = o.goc
+      o.thap = thieu(getComputedStyle(p)) // cỡ chữ đổi theo bề rộng cửa sổ
       var tn = p.firstChild
       if (!tn || tn.nodeType !== 3) return
       var r = document.createRange()
@@ -113,9 +171,14 @@
         } else dong[dong.length - 1].cuoi = m.index + m[0].length
       }
       p.textContent = ''
+      // Margin âm của dòng thấp (kx-th-thap) phải nằm TRONG <p>: <p> block
+      // thường thì margin đó lọt ra ngoài (gộp margin), <p> cao thêm phần
+      // padding và bị đẩy lên. flow-root giữ nó lại — <p> xếp y như cũ.
+      if (o.thap && getComputedStyle(p).display === 'block') p.style.display = 'flow-root'
       dong.forEach(function (d) {
         var sp = document.createElement('span')
-        sp.className = 'kx-th-d'
+        sp.className = 'kx-th-d' + (o.canh ? ' kx-th-' + o.canh : '') + (o.thap ? ' kx-th-thap' : '')
+        if (o.thap) sp.style.setProperty('--kx-th-pad', o.thap.toFixed(2) + 'px')
         sp.textContent = o.goc.slice(d.dau, d.cuoi)
         p.appendChild(sp)
         ganDong(sp)
@@ -183,6 +246,10 @@
     function tachHet() {
       doan.forEach(tach)
     }
+    function batDau() {
+      gom()
+      tachHet()
+    }
     var rongCu = 0
     function khiDoiCo() {
       var w = document.documentElement.clientWidth
@@ -198,7 +265,7 @@
     // Tách SAU khi font nạp xong — tách với font dự phòng là ngắt dòng sai.
     var chay = function () {
       rongCu = document.documentElement.clientWidth
-      tachHet()
+      batDau()
     }
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(chay)
     else chay()
