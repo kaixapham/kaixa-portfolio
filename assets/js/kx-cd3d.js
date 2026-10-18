@@ -229,6 +229,17 @@ function chonVp(beRong) {
 const KHOA = ['w', 'x', 'y', 'dist', 'rotX', 'rotY', 'rotZ']
 const muotHoa = (k) => k * k * (3 - 2 * k) // smoothstep
 
+/* Góc xoay nội suy bằng QUATERNION (slerp), không cộng trừ từng góc Euler:
+ * gizmo của builder xoay quanh trục thật của máy rồi đổi ngược ra Euler, mà ở
+ * gần rotY = ±90° (khoá gimbal) một cú xoay 30° có thể làm ba con số Euler
+ * nhảy tới 90°. Nội suy từng số thì giữa hai mốc máy xoắn vặn; slerp thì luôn
+ * quay theo đường ngắn nhất giữa hai HƯỚNG, bất kể Euler ghi kiểu gì. Đối tượng
+ * tạm cấp sẵn — hàm này chạy mỗi khung (luật cấm số 2). */
+const D2R = Math.PI / 180
+const _qa = new THREE.Quaternion()
+const _qb = new THREE.Quaternion()
+const _ea = new THREE.Euler()
+
 /* Tư thế tại một tiến độ cuộn: tìm hai mốc kẹp quanh nó rồi nội suy. */
 function tuThe(day, p) {
   if (!day.length) return null
@@ -248,6 +259,13 @@ function tuThe(day, p) {
     const vb = b[kh] == null ? va : b[kh]
     ra[kh] = va + (vb - va) * k
   }
+  _qa.setFromEuler(_ea.set((a.rotX || 0) * D2R, (a.rotY || 0) * D2R, (a.rotZ || 0) * D2R, 'XYZ'))
+  _qb.setFromEuler(_ea.set((b.rotX || 0) * D2R, (b.rotY || 0) * D2R, (b.rotZ || 0) * D2R, 'XYZ'))
+  _qa.slerp(_qb, k)
+  _ea.setFromQuaternion(_qa, 'XYZ')
+  ra.rotX = _ea.x / D2R
+  ra.rotY = _ea.y / D2R
+  ra.rotZ = _ea.z / D2R
   return ra
 }
 

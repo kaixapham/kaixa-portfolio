@@ -331,11 +331,6 @@
       b.addEventListener('click', function () {
         chonMan(k)
       })
-      // Rê lên số = XEM TRƯỚC màn đó (người dùng chốt: "trỏ vào số thì cũng
-      // phải ra viewport đó") — nhảy tới, hiện tư thế ở đó, chưa tạo mốc.
-      b.addEventListener('pointerenter', function () {
-        xemMan(k)
-      })
       hangMoc.appendChild(b)
     })
     var xoa = el('button', null, '− Xoá mốc')
@@ -354,35 +349,10 @@
     if (window.KX_SMOOTH_SCROLL && window.KX_SMOOTH_SCROLL.dongBo) window.KX_SMOOTH_SCROLL.dongBo()
   }
 
-  var dangXem = false
-  function xemMan(k) {
-    var ds = cacMan()
-    var man = ds[k]
-    if (!man) return
-    dangXem = true
-    cuonToi(man.y)
-    var i = mocCuaMan(ds, k)
-    cd.deTay(Object.assign({}, i >= 0 ? day[i] : cd.tuTheTai(day, man.at)))
-    veLaiNote()
-  }
-
-  // Rời hàng số mà không bấm: về lại màn của mốc đang chỉnh.
-  function thoiXem() {
-    if (!dangXem) return
-    dangXem = false
-    var m = day[iMoc]
-    if (!m) return
-    var tran = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
-    cuonToi(Math.round(m.at * tran))
-    apNgay()
-    veLaiNote()
-  }
-
   function chonMan(k) {
     var ds = cacMan()
     var man = ds[k]
     if (!man) return
-    dangXem = false
     cuonToi(man.y)
     var i = mocCuaMan(ds, k)
     if (i >= 0) {
@@ -686,6 +656,53 @@
     svg.appendChild(bat)
   }
 
+  /* Kéo một vòng = xoay máy quanh ĐÚNG trục của vòng đó (trục của chính máy,
+   * vì vòng vẽ theo matrixWorld của máy), rồi đổi ngược ra ba góc Euler để
+   * lưu. Bản đầu cộng thẳng vào MỘT góc Euler — mà Euler 'XYZ' ở rotY = ±90°
+   * thì trục X và Z trùng nhau (khoá gimbal): kéo vòng đỏ hay vòng xanh dương
+   * xoay y hệt nhau, đúng tư thế "nhìn cạnh" người dùng hay chỉnh. Đây từng
+   * là lỗi thật.
+   * Một hướng có HAI bộ Euler tương đương (x, y, z) và (x+180, 180−y, z+180):
+   * chọn bộ gần góc lúc bắt đầu kéo nhất, không thì máy lật vòng khi nội suy
+   * giữa hai mốc. */
+  function xoayQuanhTruc(tay, goc, dau) {
+    var T = cd.THREE
+    var d2r = Math.PI / 180
+    var q = new T.Quaternion().setFromEuler(new T.Euler(dau.rotX * d2r, dau.rotY * d2r, dau.rotZ * d2r, 'XYZ'))
+    var truc = tay === 'rotX' ? new T.Vector3(1, 0, 0) : tay === 'rotY' ? new T.Vector3(0, 1, 0) : new T.Vector3(0, 0, 1)
+    // Vòng Y vẽ theo chiều X→Z — NGƯỢC chiều dương quanh Y (bàn tay phải:
+    // Z→X). Vòng X (Y→Z) và vòng Z (X→Y) thì cùng chiều dương. Đảo dấu vòng Y
+    // để kéo dọc vòng nào thì máy cũng trôi theo tay.
+    if (tay === 'rotY') goc = -goc
+    q.multiply(new T.Quaternion().setFromAxisAngle(truc, goc * d2r))
+    var e = new T.Euler().setFromQuaternion(q, 'XYZ')
+    var vong = function (v) {
+      v = ((v + 180) % 360 + 360) % 360 - 180
+      return v === -180 ? 180 : v
+    }
+    var a = [e.x / d2r, e.y / d2r, e.z / d2r].map(vong)
+    var b = [vong(a[0] + 180), vong(180 - a[1]), vong(a[2] + 180)]
+    var goc0 = [dau.rotX, dau.rotY, dau.rotZ]
+    var lech = function (v) {
+      var t = 0
+      for (var i = 0; i < 3; i++) t += Math.abs(vong(v[i] - goc0[i]))
+      return t
+    }
+    var tot = lech(a) <= lech(b) ? a : b
+    // Giữ liền mạch với góc cũ (không nhảy 359 → -1) khi còn trong ±180.
+    tot = tot.map(function (v, i) {
+      var g = goc0[i] + vong(v - goc0[i])
+      return Math.abs(g) <= 180 ? g : v
+    })
+    var m = day[iMoc]
+    if (!m) return
+    m.rotX = Math.round(tot[0] * 10) / 10
+    m.rotY = Math.round(tot[1] * 10) / 10
+    m.rotZ = Math.round(tot[2] * 10) / 10
+    apNgay()
+    veLaiO()
+  }
+
   function batGizmo() {
     var keo = null
 
@@ -776,7 +793,7 @@
           var g = Math.atan2(e.clientY - keo.cy, e.clientX - keo.cx)
           goc = ((g - keo.goc0) * 180) / Math.PI
         }
-        dat(keo.tay, batNac(keo.dau[keo.tay] + goc, CONFIG.nacXoay))
+        xoayQuanhTruc(keo.tay, batNac(goc, CONFIG.nacXoay), keo.dau)
       } else if (keo.tay === 'w') {
         // phóng theo TỈ LỆ khoảng cách tới tâm, nên kéo góc nào cũng đúng chiều
         var r1 = Math.hypot(e.clientX - keo.cx, e.clientY - keo.cy)
@@ -983,7 +1000,6 @@
     bang.appendChild(hangGoc)
 
     hangMoc = el('div', 'kx-cdb__moc')
-    hangMoc.addEventListener('pointerleave', thoiXem)
     bang.appendChild(hangMoc)
 
     O.forEach(function (o) {
