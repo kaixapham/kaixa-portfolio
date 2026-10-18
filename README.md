@@ -28,3 +28,7 @@ và WebGL đọc texture từ ảnh.
 - `H` — bảng setting của trang (chỉ để xem số; nút Lưu chỉ chạy trên máy)
 - `G` — lưới 12 cột
 - `K` (Home) — bảng chỉnh máy CD 3D
+
+## Vercel
+
+Vercel build từ repo này qua `vercel-build.mjs`: chép site sang `dist/` và bỏ nhạc (giữ tiếng UI trong `assets/sound/`). GitHub Pages vẫn phục vụ thẳng từ gốc repo.
