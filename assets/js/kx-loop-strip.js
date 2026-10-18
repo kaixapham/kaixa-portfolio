@@ -47,7 +47,7 @@
       '|Niki Studio=rectangle3002.webp,rectangle2993.webp,rectangle3003.png,rectangle3004.webp' +
       '|150Posters=rectangle3005.png,rectangle3006.webp,rectangle3007.png,rectangle3008.webp',
     thuMuc: 'assets/works/', // đường dẫn TƯƠNG ĐỐI (luật số 5)
-    stripY: 3744, // tâm dải theo phương dọc
+    stripY: 3777, // tâm dải theo phương dọc
     tilt: -12.5, // độ nghiêng (âm = dâng lên về bên phải)
     cardW: 476,
     cardH: 476,
@@ -64,7 +64,16 @@
     // ------------------------------------------------------- cụm thông tin
     info: true, // false = cụm thông tin đứng yên như bản thiết kế
     infoAt: 0.5, // điểm đọc dự án trên dải: phần bề rộng viewport (0.5 = giữa)
-    infoFade: 220, // ms — mờ ra rồi mờ vào khi đổi dự án
+    infoFade: 220, // ms — mờ ra rồi mờ vào khi đổi dự án (chỉ dùng khi infoAnim tắt)
+    // CHỮ CÓ CHUYỂN ĐỘNG khi đổi dự án (người dùng chốt "text phải có animation
+    // khi đổi"): số lớn LẬT (cũ trượt lên, mới trượt từ dưới lên, lệch nhịp
+    // từng chữ số), tên dự án từng chữ cái NHÔ LÊN, cột Geist Mono XÁO CHỮ rồi
+    // chốt dần từ trái sang (như kx-shuffle-text ở trang contact).
+    infoAnim: true,
+    infoNumMs: 520, // ms — một chữ số trượt vào
+    infoNameMs: 460, // ms — một chữ cái của tên nhô lên
+    infoStagger: 40, // ms — lệch nhịp giữa hai chữ
+    infoScrambleMs: 420, // ms — cột Geist Mono xáo xong
     infoName: '1:341', // "( Lumen Studio )"
     infoIcons: '1:342', // ba icon theo sau tên
     infoNum: '1:289', // "02."
@@ -232,6 +241,8 @@
       '.kx-page .kx-ls-dau a:hover{text-decoration:underline}',
       '.kx-page .kx-ls-dau .kx-ls-dau__cuoi{justify-self:end;text-align:right}',
       '.kx-page .kx-ls-o{display:inline-block}',
+      // Từng chữ của số lớn / tên dự án khi đổi — inline-block để trượt bằng transform.
+      '.kx-page .kx-ls-ch{display:inline-block;will-change:transform,opacity}',
     ].join('\n')
   }
 
@@ -319,6 +330,88 @@
    * khe "tên → icon" và "icon → )" của bản gốc, rồi dựng lại dòng thành
    * "( TÊN" + một ô trống đúng bằng (khe + icon + khe) + ")", và mỗi lần đổi
    * tên thì đặt icon vào đúng ô trống đó. */
+  /* ---------------------------------------------- chuyển động chữ đổi dự án */
+  var EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
+  function itChuyenDong() {
+    return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)
+  }
+  // Tách chuỗi thành các span từng chữ (inline-block để trượt được bằng transform).
+  function tachChu(cha, chuoi) {
+    var ra = []
+    for (var i = 0; i < chuoi.length; i++) {
+      var c = chuoi[i]
+      var sp = document.createElement('span')
+      sp.className = 'kx-ls-ch'
+      sp.textContent = c === ' ' ? '\u00a0' : c
+      cha.appendChild(sp)
+      ra.push(sp)
+    }
+    return ra
+  }
+  // Số lớn: chữ cũ trượt lên & mờ, rồi chữ mới trượt từ dưới lên, lệch nhịp.
+  function latSo(p, chuoi) {
+    if (!S.infoAnim || itChuyenDong() || !p.firstChild) {
+      p.textContent = chuoi
+      return
+    }
+    var cu = p.querySelectorAll('.kx-ls-ch')
+    if (!cu.length) {
+      p.textContent = ''
+      cu = tachChu(p, p.__chu || '')
+    }
+    var ra = Math.round(S.infoNumMs * 0.45)
+    Array.prototype.forEach.call(cu, function (sp, i) {
+      sp.animate([{ transform: 'translateY(0)', opacity: 1 }, { transform: 'translateY(-55%)', opacity: 0 }],
+        { duration: ra, delay: i * S.infoStagger * 0.5, easing: 'cubic-bezier(0.5, 0, 0.75, 0)', fill: 'forwards' })
+    })
+    clearTimeout(p.__hen)
+    p.__hen = setTimeout(function () {
+      p.textContent = ''
+      tachChu(p, chuoi).forEach(function (sp, i) {
+        sp.animate([{ transform: 'translateY(60%)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }],
+          { duration: S.infoNumMs, delay: i * S.infoStagger, easing: EASE, fill: 'backwards' })
+      })
+    }, ra + (cu.length - 1) * S.infoStagger * 0.5)
+    p.__chu = chuoi
+  }
+  // Tên: từng chữ cái nhô lên lần lượt (thay ngay, không có pha ra — gọn, nhanh).
+  function nhoTen(span, chuoi) {
+    span.textContent = ''
+    if (!S.infoAnim || itChuyenDong()) {
+      span.textContent = chuoi
+      return
+    }
+    tachChu(span, chuoi).forEach(function (sp, i) {
+      sp.animate([{ transform: 'translateY(45%)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }],
+        { duration: S.infoNameMs, delay: i * S.infoStagger * 0.5, easing: EASE, fill: 'backwards' })
+    })
+  }
+  // Geist Mono: xáo kí tự rồi chốt dần từ trái sang. Một kí tự thay đúng một kí
+  // tự, không đụng khoảng trắng — chữ đều nên dòng không xô.
+  var KITU = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/#*+'
+  function xaoChu(p, chuoi) {
+    if (!S.infoAnim || itChuyenDong()) {
+      p.textContent = chuoi
+      return
+    }
+    var t0 = performance.now()
+    var dai = S.infoScrambleMs
+    cancelAnimationFrame(p.__raf)
+    var buoc = function (now) {
+      var k = Math.min(1, (now - t0) / dai)
+      var chot = Math.floor(k * chuoi.length)
+      var s2 = ''
+      for (var i = 0; i < chuoi.length; i++) {
+        var c = chuoi[i]
+        s2 += i < chot || c === ' ' ? c : KITU[(Math.random() * KITU.length) | 0]
+      }
+      p.textContent = s2
+      if (k < 1) p.__raf = requestAnimationFrame(buoc)
+      else p.textContent = chuoi
+    }
+    p.__raf = requestAnimationFrame(buoc)
+  }
+
   function dungThongTin(page, duAn) {
     var pTen = q(S.infoName)
     var icon = q(S.infoIcons)
@@ -363,7 +456,9 @@
       }
       o.o.style.width = px(o.rong)
       pTen.textContent = ''
-      pTen.appendChild(document.createTextNode(''))
+      pTen.appendChild(document.createTextNode('( '))
+      o.ten = el('span', 'kx-ls-ten') // tên dự án — chữ cái nhô lên khi đổi
+      pTen.appendChild(o.ten)
       pTen.appendChild(o.o)
       pTen.appendChild(document.createTextNode(')'))
     }
@@ -374,7 +469,10 @@
         pTen.textContent = '( ' + ten + ' )'
         return
       }
-      pTen.firstChild.nodeValue = '( ' + ten
+      if (o.ten.__chu !== ten) {
+        nhoTen(o.ten, ten)
+        o.ten.__chu = ten
+      }
       if (!icon) return
       // Đặt icon vào ô trống: toạ độ theo khung chứa của icon, quy ra px thiết kế.
       var cha = icon.offsetParent || icon.parentElement
@@ -383,18 +481,21 @@
       icon.style.left = px((ob.left - cb.left) / k() + o.khe)
     }
 
-    function datCot(c, dong) {
+    function datCot(c, dong, imLang) {
       if (!c) return
       var ps = c.querySelectorAll('p')
       // Hai dòng đầu là "01" và một dòng trống — giữ; phần còn lại là nội dung.
       var giu = 2
       for (var i = ps.length - 1; i >= giu; i--) ps[i].remove()
       dong.forEach(function (d, i) {
-        var p = el('p', i === dong.length - 1 ? 'ke' : 'kd', d)
+        var p = el('p', i === dong.length - 1 ? 'ke' : 'kd', '')
         // Lấy lại đúng class sinh ra của dòng thường / dòng cuối như bản gốc.
         p.className = i === dong.length - 1 ? c.__lopCuoi : c.__lopThuong
         c.appendChild(p)
+        if (c.__daCo && !imLang) xaoChu(p, d)
+        else p.textContent = d
       })
+      c.__daCo = true
     }
     ;[c1, c2, c3].forEach(function (c) {
       if (!c) return
@@ -403,20 +504,24 @@
       c.__lopCuoi = ps.length ? ps[ps.length - 1].className : ''
     })
 
-    function apDuAn(i) {
+    function apDuAn(i, imLang) {
       var d = duAn[i]
       datTen(d.ten)
-      so.textContent = (i + 1 < 10 ? '0' : '') + (i + 1) + '.'
-      datCot(c1, ['COLLABORATION', d.ten.toUpperCase()])
-      datCot(c2, (dv[i] || dv[0] || '').split('|').filter(Boolean))
-      datCot(c3, [(nam[i] || nam[0] || '').trim()])
+      var chuSo = (i + 1 < 10 ? '0' : '') + (i + 1) + '.'
+      if (so.__chu === undefined) {
+        so.textContent = chuSo
+        so.__chu = chuSo
+      } else if (so.__chu !== chuSo) latSo(so, chuSo)
+      datCot(c1, ['COLLABORATION', d.ten.toUpperCase()], imLang)
+      datCot(c2, (dv[i] || dv[0] || '').split('|').filter(Boolean), imLang)
+      datCot(c3, [(nam[i] || nam[0] || '').trim()], imLang)
     }
 
     function doi(i) {
       if (i === cur || i < 0 || i >= duAn.length) return
       var dau = cur < 0
       cur = i
-      if (dau || !S.infoFade) {
+      if (dau || !S.infoFade || S.infoAnim) {
         apDuAn(i)
         return
       }
@@ -435,7 +540,7 @@
       doi: doi,
       // Đổi cỡ cửa sổ: icon đặt theo px thiết kế nên tự co theo; chỉ cần đặt lại.
       datLai: function () {
-        if (cur >= 0) apDuAn(cur)
+        if (cur >= 0) apDuAn(cur, true) // đổi cỡ: dựng lại im lặng, không xáo
       },
     }
   }
@@ -813,6 +918,10 @@
 
     var kinh = dungKinh(page, dai, list)
     var tt = S.info ? dungThongTin(page, the.duAn) : null
+    // Gỡ rối / thử chuyển động: đổi cụm thông tin sang dự án i ngay.
+    api.doiThongTin = function (i) {
+      if (tt) tt.doi(i)
+    }
     var trongTam = true
 
     /* Dải đã trượt bao xa (px thiết kế), đọc từ CHÍNH animation CSS — canvas

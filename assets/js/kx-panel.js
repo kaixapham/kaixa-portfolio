@@ -118,7 +118,12 @@
         { nhom: 'Cụm thông tin' },
         { key: 'info', nhan: 'Đổi theo dự án', type: 'toggle', goiY: 'chạy hết 4 ảnh của dự án thì tên, số, cột thông tin đổi' },
         { key: 'infoAt', nhan: 'Điểm đọc dự án', min: 0, max: 1, step: 0.01, goiY: 'phần bề rộng viewport; 0.5 = giữa' },
-        { key: 'infoFade', nhan: 'Thời gian đổi', min: 0, max: 1000, step: 10, don: 'ms' },
+        { key: 'infoAnim', nhan: 'Chữ chuyển động khi đổi', type: 'toggle', goiY: 'số lật · tên nhô lên · cột mono xáo chữ; tắt = mờ ra/vào' },
+        { key: 'infoNumMs', nhan: 'Số lớn lật', min: 150, max: 1500, step: 10, don: 'ms' },
+        { key: 'infoNameMs', nhan: 'Tên nhô lên', min: 150, max: 1500, step: 10, don: 'ms' },
+        { key: 'infoStagger', nhan: 'Lệch nhịp giữa các chữ', min: 0, max: 150, step: 1, don: 'ms' },
+        { key: 'infoScrambleMs', nhan: 'Cột mono xáo chữ', min: 100, max: 1500, step: 10, don: 'ms' },
+        { key: 'infoFade', nhan: 'Thời gian mờ (khi tắt chuyển động)', min: 0, max: 1000, step: 10, don: 'ms' },
       ],
     },
     {
