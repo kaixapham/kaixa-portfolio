@@ -445,8 +445,8 @@ html[data-hm],html[data-hm] body{margin:0;padding:0;height:100%;overflow:hidden}
 
     return `
 <div class="hm-discs">
-  <img class="hm-disc hm-disc--l" src="${I}disc-left.png" alt="" draggable="false">
-  <img class="hm-disc hm-disc--r" src="${I}disc-right.png" alt="" draggable="false">
+  <img class="hm-disc hm-disc--l" src="${I}disc-left.webp" alt="" draggable="false">
+  <img class="hm-disc hm-disc--r" src="${I}disc-right.webp" alt="" draggable="false">
   <img class="hm-badge" src="${I}disc-badge.png" alt="" draggable="false">
 </div>
 

@@ -55,16 +55,20 @@
     fade: 0, // giây — mờ chồng giữa hai ảnh; 0 = nhảy cắt
     shuffle: false, // true = nhảy lung tung thay vì theo thứ tự khai
     // Khai thêm `shot9` … là chạy, hàm quét tới shot16.
-    shot1: 'assets/media/08---Mu-i.png',
-    shot2: 'assets/media/07---Ngu--a--hehe.png',
-    shot3: 'assets/media/06-woman-02-111.png',
-    shot4: 'assets/media/234261.png',
-    shot5: 'assets/media/05---Thi-n-Poster.png',
-    shot6: 'assets/media/10---Ga-.png',
-    shot7: 'assets/media/06--Ra--n-Poster.png',
-    shot8: 'assets/media/001---TV-XU-A.png',
+    // Dùng bản NHẸ ở assets/media/ld/ (WebP rộng 480 px — khung hiện chỉ 177 px
+    // thiết kế, ~380 px thật trên Retina). Bản gốc là PNG 1600–3200 px, 6–13 MB
+    // mỗi ảnh, ~78 MB cả bộ: màn loading đứng mãi ở 99% chờ tải (`holdIfSlow`).
+    // Ảnh mới tải lên qua bảng thì nhớ làm bản nhẹ: cwebp -q 82 -resize 480 0.
+    shot1: 'assets/media/ld/08---Mu-i.webp',
+    shot2: 'assets/media/ld/07---Ngu--a--hehe.webp',
+    shot3: 'assets/media/ld/06-woman-02-111.webp',
+    shot4: 'assets/media/ld/234261.webp',
+    shot5: 'assets/media/ld/05---Thi-n-Poster.webp',
+    shot6: 'assets/media/ld/10---Ga-.webp',
+    shot7: 'assets/media/ld/06--Ra--n-Poster.webp',
+    shot8: 'assets/media/ld/001---TV-XU-A.webp',
 
-    still: 'assets/media/Avt.png', // ảnh phải, đứng yên
+    still: 'assets/media/ld/Avt.webp', // ảnh phải, đứng yên
 
     // -------------------------------------------------- số phần trăm góc dưới
     pct: true,

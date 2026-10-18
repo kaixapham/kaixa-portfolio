@@ -60,9 +60,11 @@
     // Cháy xong thì LỘ RA bộ ảnh mới nằm sẵn bên dưới, không phải hiện lại ảnh
     // cũ. Ô nào để trống thì vật đó cư xử theo `mode` như thường.
     swap: true,
-    newDiscLeft: 'assets/media/237.png', // ảnh mặt đĩa TRÁI mới
-    newDiscRight: 'assets/media/237.png', // ảnh mặt đĩa PHẢI mới
-    newPoster: 'assets/media/magnific_ghost-rider-style-transfo_9ZcE8EwNYZ.png', // ảnh profile mới (thay poster giữa)
+    // Bản NHẸ ở assets/media/ld/ — gốc PNG 7.4 MB + 6.8 MB bị kx-burning-open.js
+    // nạp sẵn ngay lúc vào trang, chen đúng vào lúc màn loading đang tải.
+    newDiscLeft: 'assets/media/ld/237.webp', // ảnh mặt đĩa TRÁI mới (1200 px)
+    newDiscRight: 'assets/media/ld/237.webp', // ảnh mặt đĩa PHẢI mới
+    newPoster: 'assets/media/ld/magnific_ghost-rider-style-transfo_9ZcE8EwNYZ.webp', // ảnh profile mới (thay poster giữa, 480 px)
 
     // ---------------------------------------------------------- chất vết cháy
     from: 'bottom', // mép nào cháy trước: 'bottom' | 'top' | 'edge' | 'center'
