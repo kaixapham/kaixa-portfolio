@@ -55,7 +55,7 @@
     // mép bấy nhiêu phần bề ngang màn hình. 0 = thẳng như cũ; dương = mũi tên
     // chỉ theo hướng quét ">"; âm = chữ V ngược "<". Lớp phủ cũng cắt theo
     // đúng đường gấp khúc đó.
-    arrow: 0,
+    arrow: 0.2,
 
     color: '#ffffff', // màu pixel
     rainbow: false, // true = trải cầu vồng theo vị trí, bỏ qua `color`
@@ -64,7 +64,14 @@
     zIndex: 100,
     // Chuyển sang trang khác (màn loading → Home):
     coverColor: '#040203', // màu lớp phủ ở trang mới — đúng nền màn loading
-    revealWait: 600, // ms — trang mới chờ font tối đa bấy nhiêu rồi mới mở
+    revealWait: 600, // ms — chờ ít nhất bấy nhiêu rồi mới xét chuyện mở
+    // Trang mới (Home) nặng lúc vừa mở: dựng máy CD three.js (~700 ms treo),
+    // biên dịch shader lần vẽ đầu (~380 ms), vẽ atlas dải ảnh (~300 ms). Quét
+    // ĐÚNG lúc đó thì dải pixel giật cục (người dùng: "sao lag thế"). Nên giữ
+    // LỚP ĐEN tới khi trang YÊN — máy 3D báo dựng xong (nếu có) và `quietFrames`
+    // khung liền nhau không khựng (< 50 ms) — rồi mới quét. Trần chờ `waitMax`.
+    quietFrames: 10,
+    waitMax: 4000, // ms — quá thì cứ quét
   }
 
   const S = CONFIG
@@ -216,7 +223,11 @@
           let o = 0
           if (t >= p.vao && t < p.ra) o = clamp((t - p.vao) / p.dai, 0, 1)
           else if (t >= p.ra) o = 1 - clamp((t - p.ra) / p.dai, 0, 1)
-          p.el.style.opacity = o
+          // Chỉ ghi khi đổi: ~1300 ô, ghi lại cả giá trị cũ là tính lại style vô ích.
+          if (o !== p.o) {
+            p.o = o
+            p.el.style.opacity = o
+          }
         }
 
         // Cắt lớp phủ theo BẬC, mỗi cột một bậc — đúng như `steps(cols, start)`
@@ -292,12 +303,39 @@
     const chay = () => {
       if (da) return
       da = true
-      requestAnimationFrame(() => run(phu).then(() => phu.remove()))
+      // Dấu thời gian để đo (Performance panel / PerformanceObserver).
+      if (performance.mark) performance.mark('kx-pt-quet')
+      requestAnimationFrame(() => run(phu).then(() => {
+        phu.remove()
+        if (performance.mark) performance.mark('kx-pt-xong')
+      }))
     }
-    // Chờ font (chữ đổi font giữa lúc lộ ra là thấy rõ) nhưng không quá `revealWait`.
-    setTimeout(chay, S.revealWait)
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(chay)
-    else chay()
+    // Chờ trang YÊN rồi mới quét (xem `quietFrames`). Font cũng phải xong —
+    // chữ đổi font giữa lúc lộ ra là thấy rõ.
+    const t0 = performance.now()
+    let font = !(document.fonts && document.fonts.ready)
+    if (!font) document.fonts.ready.then(() => { font = true })
+    // Trang có máy CD 3D thì chờ nó dựng xong; máy đang tắt (`hien: false`) thì thôi.
+    let may = !document.querySelector('script[src*="kx-cd3d.js"]')
+    addEventListener('kx-cd3d-ready', () => { may = true }, { once: true })
+    addEventListener('kx-cd3d-ctl', () => {
+      const c = window.KX_CD3D_CTL
+      if (c && c.config && !c.config.hien) may = true
+    }, { once: true })
+    let truoc = t0
+    let yen = 0
+    const doi = (now) => {
+      const dt = now - truoc
+      truoc = now
+      yen = dt < 50 ? yen + 1 : 0 // < 50 ms: máy chạy đều 20–30 fps vẫn tính là yên
+      const du = now - t0
+      if (du >= S.waitMax || (du >= S.revealWait && font && may && yen >= S.quietFrames)) {
+        chay()
+        return
+      }
+      requestAnimationFrame(doi)
+    }
+    requestAnimationFrame(doi)
   }
 
   // Trang mới: có cờ thì mở. Chạy ngay lúc file nạp (cuối <body>), không chờ
