@@ -65,6 +65,7 @@
     '.kx-cdb__vps,.kx-cdb__modes{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:9px}',
     '.kx-cdb__goc{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:9px}',
     '.kx-cdb__goc button{padding:5px 2px;font-size:10px}',
+    '.kx-cdb .kx-cdb__rong{width:100%;margin-bottom:9px;padding:6px 4px}',
     '.kx-cdb__lat{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:9px}',
     '.kx-cdb__lat button{padding:5px 2px;font-size:10px}',
     '.kx-cdb__lat button:last-child{grid-column:1 / -1}',
@@ -242,6 +243,31 @@
     if (!m) return
     xoayQuanhTruc(tay, tay === 'rotY' ? -goc : goc, Object.assign({}, m))
     nhay('Lật ' + tay.slice(-1) + ' ' + goc + '° → X ' + m.rotX + '°, Y ' + m.rotY + '°, Z ' + m.rotZ + '°')
+  }
+
+  /* ĐỒNG BỘ CỠ (người dùng: "1 nút 3D player ở mọi scene đồng bộ về size"):
+   * lấy cỡ ĐANG THẤY ở vị trí cuộn này (`w` cạnh ô vẽ + `dist` camera lùi — hai
+   * số quyết định máy to cỡ nào) chép sang MỌI mốc của viewport đang sửa. Đổi
+   * `w` thì ô vẽ to/nhỏ từ góc trên-trái, nên bù x/y nửa phần chênh để TÂM máy
+   * ở từng mốc đứng nguyên chỗ. Chưa ghi xuống — bấm Lưu mới giữ. */
+  function dongBoCo() {
+    var goc = tuTheNay()
+    if (!goc) return
+    var w = Math.round(goc.w)
+    var dist = Math.round(goc.dist * 10) / 10
+    var doi = 0
+    day.forEach(function (m) {
+      if (Math.round(m.w) === w && m.dist === dist) return
+      var bu = (m.w - w) / 2
+      m.x = kep(Math.round(m.x + bu), oTheo.x)
+      m.y = kep(Math.round(m.y + bu), oTheo.y)
+      m.w = w
+      m.dist = dist
+      doi++
+    })
+    apNgay()
+    veLaiO()
+    nhay('Đồng bộ cỡ ' + doi + '/' + day.length + ' mốc → cạnh ' + w + ', lùi ' + dist + ' — bấm Lưu để giữ')
   }
 
   /* CĂN (người dùng: "thêm align giữa cho vật thể, đỡ phải kéo tay"): dời
@@ -1077,6 +1103,11 @@
     })
     bang.appendChild(el('p', 'kx-cdb__moc-ten', 'Căn máy theo màn hình (lề ' + CONFIG.canLe + ' px thiết kế)'))
     bang.appendChild(hangCan)
+    var bCo = el('button', 'kx-cdb__rong', '⇔ Đồng bộ cỡ cho mọi mốc')
+    bCo.type = 'button'
+    bCo.title = 'Lấy cỡ máy đang thấy ở đây (cạnh ô vẽ + camera lùi) chép sang mọi mốc của viewport này; tâm máy ở từng mốc giữ nguyên'
+    bCo.addEventListener('click', dongBoCo)
+    bang.appendChild(bCo)
 
     // LẬT NHANH 90° / 180° quanh trục CỦA MÁY (người dùng: "thêm các nút lật
     // 90, 180 độ") — cùng cách tính với vòng gizmo nên không dính khoá gimbal.
