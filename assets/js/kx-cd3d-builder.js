@@ -67,6 +67,14 @@
     '.kx-cdb__moc button.co-moc::after{content:"";position:absolute;top:3px;right:3px;width:4px;height:4px;border-radius:50%;background:#4a7dff}',
     '.kx-cdb__moc button.is-on.co-moc::after{background:#0b0b0c}',
     '.kx-cdb .kx-cdb__moc-ten{width:100%;margin:0 0 2px;color:#6f6f73;font-size:10px}',
+    // Đường kẻ chia MÀN trên trang — xanh neon, chỉ hiện khi bảng mở.
+    '.kx-cdb-man{position:absolute;left:0;top:0;width:100%;pointer-events:none;z-index:2147482000}',
+    '.kx-cdb-man[hidden]{display:none}',
+    '.kx-cdb-man__ke{position:absolute;left:0;right:0;height:0;border-top:1px solid #39ff14;',
+    '  box-shadow:0 0 6px 1px rgba(57,255,20,.75),0 0 18px 2px rgba(57,255,20,.35)}',
+    '.kx-cdb-man__so{position:absolute;left:8px;top:4px;padding:2px 6px;border-radius:3px;',
+    '  font:500 11px/1.2 "Geist Mono",ui-monospace,monospace;letter-spacing:.04em;color:#0b0b0c;background:#39ff14;',
+    '  box-shadow:0 0 10px rgba(57,255,20,.8)}',
     '.kx-cdb button{font:inherit;color:#bdbdc2;background:#151517;border:1px solid #2a2a2c;',
     '  border-radius:4px;padding:5px 4px;cursor:pointer;line-height:1.1;text-align:center}',
     '.kx-cdb button:hover{color:#fff;border-color:#3d3d41}',
@@ -253,6 +261,28 @@
     })
   }
 
+  /* Đường kẻ chia màn (người dùng chốt: xanh neon khi bật edit). Một lớp
+   * `position: absolute` treo vào <body>, cao bằng cả trang, mỗi màn một đường
+   * ở đúng `y` của màn kèm nhãn số — trùng số trên hàng nút. Dựng lại khi mở
+   * bảng và khi đổi cỡ cửa sổ; không vẽ gì mỗi khung. */
+  var lopMan = null
+  function veDuongMan() {
+    if (!lopMan) {
+      lopMan = el('div', 'kx-cdb-man')
+      lopMan.setAttribute('aria-hidden', 'true')
+      document.body.appendChild(lopMan)
+    }
+    lopMan.textContent = ''
+    lopMan.style.height = document.documentElement.scrollHeight + 'px'
+    var ds = cacMan()
+    ds.forEach(function (man, k) {
+      var ke = el('div', 'kx-cdb-man__ke')
+      ke.style.top = man.y + 'px'
+      ke.appendChild(el('span', 'kx-cdb-man__so', 'MÀN ' + (k + 1) + (k === ds.length - 1 ? ' · FOOTER' : '')))
+      lopMan.appendChild(ke)
+    })
+  }
+
   // Mốc (chỉ số trong `day`) của màn thứ k, hoặc -1. Mỗi mốc thuộc ĐÚNG MỘT
   // màn — màn gần nó nhất (màn cuối = footer có thể chỉ cách màn trước nửa
   // màn hình; xét "trong nửa màn" thôi thì một mốc ở đáy bị tính cho cả hai).
@@ -301,6 +331,11 @@
       b.addEventListener('click', function () {
         chonMan(k)
       })
+      // Rê lên số = XEM TRƯỚC màn đó (người dùng chốt: "trỏ vào số thì cũng
+      // phải ra viewport đó") — nhảy tới, hiện tư thế ở đó, chưa tạo mốc.
+      b.addEventListener('pointerenter', function () {
+        xemMan(k)
+      })
       hangMoc.appendChild(b)
     })
     var xoa = el('button', null, '− Xoá mốc')
@@ -311,13 +346,44 @@
     hangMoc.appendChild(xoa)
   }
 
+  // Nhảy thẳng (không trôi) rồi báo kx-smooth-scroll.js đồng bộ đích NGAY —
+  // không thì vòng lerp của nó (đang chạy dở sau một nhát lăn) kéo trang ngược
+  // về chỗ cũ.
+  function cuonToi(y) {
+    window.scrollTo(0, y)
+    if (window.KX_SMOOTH_SCROLL && window.KX_SMOOTH_SCROLL.dongBo) window.KX_SMOOTH_SCROLL.dongBo()
+  }
+
+  var dangXem = false
+  function xemMan(k) {
+    var ds = cacMan()
+    var man = ds[k]
+    if (!man) return
+    dangXem = true
+    cuonToi(man.y)
+    var i = mocCuaMan(ds, k)
+    cd.deTay(Object.assign({}, i >= 0 ? day[i] : cd.tuTheTai(day, man.at)))
+    veLaiNote()
+  }
+
+  // Rời hàng số mà không bấm: về lại màn của mốc đang chỉnh.
+  function thoiXem() {
+    if (!dangXem) return
+    dangXem = false
+    var m = day[iMoc]
+    if (!m) return
+    var tran = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
+    cuonToi(Math.round(m.at * tran))
+    apNgay()
+    veLaiNote()
+  }
+
   function chonMan(k) {
     var ds = cacMan()
     var man = ds[k]
     if (!man) return
-    // Nhảy thẳng (không trôi) — kx-smooth-scroll.js tự đồng bộ đích theo vị
-    // trí mới vì đây không phải vị trí do nó ghi.
-    window.scrollTo(0, man.y)
+    dangXem = false
+    cuonToi(man.y)
     var i = mocCuaMan(ds, k)
     if (i >= 0) {
       chonMoc(i)
@@ -917,6 +983,7 @@
     bang.appendChild(hangGoc)
 
     hangMoc = el('div', 'kx-cdb__moc')
+    hangMoc.addEventListener('pointerleave', thoiXem)
     bang.appendChild(hangMoc)
 
     O.forEach(function (o) {
@@ -995,6 +1062,8 @@
     // một cái là trúng luôn nút Play, và nó cũng liên tục gạt pointerEvents
     // về 'none' ngay dưới tay đang kéo.
     cd.boc.dataset.kxKhoa = mo ? '1' : '0'
+    if (mo) veDuongMan()
+    if (lopMan) lopMan.hidden = !mo
     if (mo) {
       chonVp(vpDangSua || vpHienTai())
       veLaiCheDo()
@@ -1060,6 +1129,7 @@
       if (!bang.hidden) {
         veLaiVp()
         veLaiHangMoc() // cao cửa sổ đổi → số màn đổi
+        veDuongMan()
         veLaiNote()
       }
     })
