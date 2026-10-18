@@ -88,6 +88,15 @@ const CONFIG = {
   spin: 1, // tốc độ quay đĩa (0 = đứng yên)
   scrollSpin: 0.35, // cuộn thêm bao nhiêu vòng đĩa trên mỗi màn hình cuộn
   muot: true, // nội suy mốc bằng đường cong mềm thay vì đường thẳng
+  /* RESPONSIVE (người dùng chốt "chia theo %"): mốc vẫn ghi x/y/w bằng px của
+   * khung thiết kế 1920×1080, nhưng đặt lên màn theo TÂM tính bằng % — tâm
+   * ngang = (x + w/2)/1920 của bề rộng, tâm dọc = (y + w/2)/1080 của CHIỀU
+   * CAO cửa sổ — và cỡ theo khung 16:9 vừa trong cửa sổ, min(rộng/1920,
+   * cao/1080). Ở màn 16:9 ra y hệt cách cũ nên mốc đã lưu không phải đổi; màn
+   * tỉ lệ khác thì máy giữ đúng vị trí TƯƠNG ĐỐI và luôn vừa khung. Cách cũ
+   * nhân cả x, y, w với rộng/1920: màn cao/thấp hơn 16:9 là máy trôi dọc, màn
+   * rộng mà thấp là máy to tràn khung. false = quay về cách cũ. */
+  phanTram: true,
   // ------------------------------------------------------------- parallax
   // Máy nhích và ngả nhẹ theo con trỏ. Cộng THÊM lên tư thế của mốc, không
   // thay thế — nên dù đang ở mốc nào thì parallax cũng chỉ là một lớp phủ mỏng.
@@ -941,21 +950,30 @@ function dung(deck) {
    * đây là vòng chạy mỗi khung trên một trang đang cuộn — đúng điều cấm số 1
    * của project (xem CLAUDE.md). Chỉ đổi khi cửa sổ đổi cỡ, nên đo lại lúc
    * resize và 30 khung một lần cho chắc. */
-  let uCache = tyLe(moc)
+  let uCache = tyLe(moc) // rộng/1920
+  let vhCache = window.innerHeight
   let demKhung = 0
 
   function doLaiTyLe() {
     uCache = tyLe(moc)
+    vhCache = window.innerHeight
+  }
+
+  // Ba tỉ lệ px-thiết-kế → px-màn: ngang, dọc, và cỡ máy (khung 16:9 vừa cửa sổ).
+  function quy() {
+    const ux = uCache
+    const uy = S.phanTram ? vhCache / 1080 : uCache
+    return { ux, uy, s: S.phanTram ? Math.min(ux, uy) : ux }
   }
 
   function apTuThe(t) {
     if (!t) return
     tuTheNay = t
-    const u = uCache
+    const q = quy()
     // Playground: ô vẽ lấp đầy khung chứa, chỉ `dist` và góc xoay là của mốc.
     const canh = sanChoi
       ? Math.round(san.getBoundingClientRect().width)
-      : Math.round(t.w * u)
+      : Math.round(t.w * q.s)
     /* Cỡ HIỂN THỊ đổi mượt mỗi khung, còn KHUNG VẼ chỉ cấp phát lại theo NẤC.
      *
      * `t.w` nội suy liên tục giữa hai mốc (1050 -> 1000 -> 900...) nên mỗi
@@ -981,8 +999,9 @@ function dung(deck) {
       camera.updateProjectionMatrix()
     }
     if (!sanChoi) {
-      boc.style.left = Math.round(t.x * u) + 'px'
-      boc.style.top = Math.round(t.y * u) + 'px'
+      // Đặt theo TÂM (xem `phanTram`): tâm tính bằng % rộng / % cao cửa sổ.
+      boc.style.left = Math.round((t.x + t.w / 2) * q.ux - canh / 2) + 'px'
+      boc.style.top = Math.round((t.y + t.w / 2) * q.uy - canh / 2) + 'px'
     }
     camera.position.set(0, 0, t.dist)
     camera.lookAt(0, 0, 0)
@@ -1182,6 +1201,7 @@ function dung(deck) {
     viec,
     docLuu,
     tienDo,
+    quy, // builder: { ux, uy, s } — quy px màn ↔ px thiết kế
     doLaiBo,
     datHien,
     get hien() {

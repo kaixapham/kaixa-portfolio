@@ -38,6 +38,13 @@
     // mốc đó, không thì sinh mốc mới ngay tại vị trí cuộn.
     ganMoc: 40,
     canLe: 24, // px thiết kế — lề khi căn Trái/Phải/Trên/Dưới (đúng lề lưới)
+    // LƯỚI + HÍT LƯỚI (người dùng chốt): 12 cột cùng số với kx-grid.js (lề 24,
+    // rãnh 16 px thiết kế, co theo bề rộng) + 12 hàng đều theo chiều cao cửa sổ.
+    luoi: true, // hiện lưới khi mở bảng
+    hut: true, // kéo máy thì mép/tâm hình máy hít vào đường lưới gần nhất
+    hutPx: 10, // px màn — trong khoảng này thì hít
+    luoiLe: 24,
+    luoiRanh: 16,
   }
 
   // Các ô số của một mốc. `nhan` là chữ hiện trên bảng.
@@ -66,6 +73,12 @@
     '.kx-cdb__goc{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:9px}',
     '.kx-cdb__goc button{padding:5px 2px;font-size:10px}',
     '.kx-cdb .kx-cdb__rong{width:100%;margin-bottom:9px;padding:6px 4px}',
+    '.kx-cdb-luoi{position:fixed;inset:0;pointer-events:none;z-index:2147481000}',
+    '.kx-cdb-luoi[hidden]{display:none}',
+    '.kx-cdb-luoi__cot{position:absolute;top:0;bottom:0;background:rgba(57,255,20,.05);',
+    '  border-left:1px solid rgba(57,255,20,.28);border-right:1px solid rgba(57,255,20,.28)}',
+    '.kx-cdb-luoi__hang{position:absolute;left:0;right:0;height:0;border-top:1px dashed rgba(57,255,20,.32)}',
+    '.kx-cdb__hai{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:9px}',
     '.kx-cdb__lat{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:9px}',
     '.kx-cdb__lat button{padding:5px 2px;font-size:10px}',
     '.kx-cdb__lat button:last-child{grid-column:1 / -1}',
@@ -278,20 +291,21 @@
     if (!h) return
     var m = mocDeSua()
     if (!m) return
-    var u = tyLe()
+    var Q = q()
     var vw = document.documentElement.clientWidth
     var vh = window.innerHeight
-    var le = (CONFIG.canLe || 0) * u
+    var leX = (CONFIG.canLe || 0) * Q.ux
+    var leY = (CONFIG.canLe || 0) * Q.uy
     var dx = 0
     var dy = 0
     if (kieu === 'giuaNgang' || kieu === 'giua') dx = vw / 2 - (h.x0 + h.x1) / 2
     if (kieu === 'giuaDoc' || kieu === 'giua') dy = vh / 2 - (h.y0 + h.y1) / 2
-    if (kieu === 'trai') dx = le - h.x0
-    if (kieu === 'phai') dx = vw - le - h.x1
-    if (kieu === 'tren') dy = le - h.y0
-    if (kieu === 'duoi') dy = vh - le - h.y1
-    if (dx) m.x = kep(Math.round(m.x + dx / u), oTheo.x)
-    if (dy) m.y = kep(Math.round(m.y + dy / u), oTheo.y)
+    if (kieu === 'trai') dx = leX - h.x0
+    if (kieu === 'phai') dx = vw - leX - h.x1
+    if (kieu === 'tren') dy = leY - h.y0
+    if (kieu === 'duoi') dy = vh - leY - h.y1
+    if (dx) m.x = kep(Math.round(m.x + dx / Q.ux), oTheo.x)
+    if (dy) m.y = kep(Math.round(m.y + dy / Q.uy), oTheo.y)
     apNgay()
     veLaiO()
     veLaiNote()
@@ -320,10 +334,89 @@
     return cd.chonVp(window.innerWidth).key
   }
 
-  /* px thiết kế → px màn hình. Đo lúc bắt đầu kéo rồi giữ nguyên suốt cú kéo,
-   * không đo mỗi lần pointermove. */
+  /* px thiết kế → px màn: { ux ngang, uy dọc, s cỡ máy } — lấy từ kx-cd3d.js
+   * (đặt máy theo % rộng / % cao, xem `phanTram`). Đo lúc bắt đầu kéo rồi giữ
+   * nguyên suốt cú kéo. */
+  function q() {
+    if (cd.quy) return cd.quy()
+    var u = cd.page.getBoundingClientRect().width / 1920
+    return { ux: u, uy: u, s: u }
+  }
   function tyLe() {
-    return cd.page.getBoundingClientRect().width / 1920
+    return q().ux
+  }
+
+  /* ----------------------------------------------- LƯỚI 12 + HÍT LƯỚI
+   * Đích hít: mép trái, mép phải, giữa của 12 cột + giữa màn (ngang); 13 đường
+   * chia 12 hàng đều theo chiều cao (dọc — gồm cả mép trên/dưới và giữa màn).
+   * Cùng các số đó vẽ thành lớp lưới cố định trên màn khi bảng mở. */
+  function dichLuoi() {
+    var Q = q()
+    var vw = document.documentElement.clientWidth
+    var vh = window.innerHeight
+    var le = CONFIG.luoiLe * Q.ux
+    var ranh = CONFIG.luoiRanh * Q.ux
+    var cot = (vw - 2 * le - 11 * ranh) / 12
+    var cots = []
+    var xs = [vw / 2]
+    for (var i = 0; i < 12; i++) {
+      var a = le + i * (cot + ranh)
+      cots.push([a, cot])
+      xs.push(a, a + cot, a + cot / 2)
+    }
+    var ys = []
+    for (var k = 0; k <= 12; k++) ys.push((k * vh) / 12)
+    return { xs: xs, ys: ys, cots: cots }
+  }
+
+  // Dời (dx, dy) px màn của hình máy `h0` (lúc bắt đầu kéo) → dời đã hít lưới.
+  function hut(h0, dx, dy, chiX, chiY) {
+    if (!CONFIG.hut || !h0) return [dx, dy]
+    var d = dichLuoi()
+    var nguong = CONFIG.hutPx
+    function gan(vals, dich) {
+      var tot = null
+      vals.forEach(function (v) {
+        dich.forEach(function (t) {
+          var k = t - v
+          if (Math.abs(k) <= nguong && (tot === null || Math.abs(k) < Math.abs(tot))) tot = k
+        })
+      })
+      return tot
+    }
+    if (!chiY) {
+      var bx = gan([h0.x0 + dx, (h0.x0 + h0.x1) / 2 + dx, h0.x1 + dx], d.xs)
+      if (bx !== null) dx += bx
+    }
+    if (!chiX) {
+      var by = gan([h0.y0 + dy, (h0.y0 + h0.y1) / 2 + dy, h0.y1 + dy], d.ys)
+      if (by !== null) dy += by
+    }
+    return [dx, dy]
+  }
+
+  var lopLuoi = null
+  function veLuoi() {
+    if (!lopLuoi) {
+      lopLuoi = el('div', 'kx-cdb-luoi')
+      lopLuoi.setAttribute('aria-hidden', 'true')
+      document.body.appendChild(lopLuoi)
+    }
+    lopLuoi.textContent = ''
+    lopLuoi.hidden = !bang || bang.hidden || !CONFIG.luoi
+    if (lopLuoi.hidden) return
+    var d = dichLuoi()
+    d.cots.forEach(function (c) {
+      var o = el('div', 'kx-cdb-luoi__cot')
+      o.style.left = c[0] + 'px'
+      o.style.width = c[1] + 'px'
+      lopLuoi.appendChild(o)
+    })
+    d.ys.forEach(function (y) {
+      var h = el('div', 'kx-cdb-luoi__hang')
+      h.style.top = Math.round(y) + 'px'
+      lopLuoi.appendChild(h)
+    })
   }
 
   /* -------------------------------------------------------------- vẽ lại */
@@ -499,10 +592,18 @@
     var m = mocDeSua()
     if (!m) return
     var atCu = m.at
+    var wCu = m.w
+    var xCu = m.x
+    var yCu = m.y
     O.forEach(function (o) {
       var v = parseFloat(oInput[o.key].value)
       if (!isNaN(v)) m[o.key] = kep(v, o)
     })
+    // Gõ cạnh ô vẽ mà không gõ x/y: phóng quanh TÂM (máy đặt theo tâm).
+    if (m.w !== wCu && m.x === xCu && m.y === yCu) {
+      m.x = kep(Math.round(m.x - (m.w - wCu) / 2), oTheo.x)
+      m.y = kep(Math.round(m.y - (m.w - wCu) / 2), oTheo.y)
+    }
     if (m.at !== atCu) {
       // dời mốc sang vị trí khác: xếp lại, vẽ lại dấu
       day.sort(function (a, b) {
@@ -803,7 +904,8 @@
         tay: tay,
         mx: e.clientX,
         my: e.clientY,
-        u: tyLe(),
+        q: q(),
+        h0: hcnMay(), // hình máy lúc bắt đầu kéo — để hít lưới
         cx: r.left + r.width / 2,
         cy: r.top + r.height / 2,
         dau: Object.assign({}, m),
@@ -851,20 +953,29 @@
 
     svg.addEventListener('pointermove', function (e) {
       if (!keo) return
-      var dx = (e.clientX - keo.mx) / keo.u // px thiết kế
-      var dy = (e.clientY - keo.my) / keo.u
+      var pdx = e.clientX - keo.mx // px màn
+      var pdy = e.clientY - keo.my
+      var dx = pdx / keo.q.ux // px thiết kế
+      var dy = pdy / keo.q.uy
       var nac = e.shiftKey
       var batNac = function (v, b) {
         return nac ? Math.round(v / b) * b : v
       }
+      // Dời có hít lưới (Shift = bắt nấc thay cho hít).
+      var doiHut = function (chiX, chiY) {
+        if (nac) return [dx, dy]
+        var h = hut(keo.h0, pdx, pdy, chiX, chiY)
+        return [h[0] / keo.q.ux, h[1] / keo.q.uy]
+      }
 
       if (keo.tay === 'tuDo') {
-        dat('x', batNac(keo.dau.x + dx, CONFIG.nacDoi))
-        dat('y', batNac(keo.dau.y + dy, CONFIG.nacDoi))
+        var d2 = doiHut(false, false)
+        dat('x', batNac(keo.dau.x + d2[0], CONFIG.nacDoi))
+        dat('y', batNac(keo.dau.y + d2[1], CONFIG.nacDoi))
       } else if (keo.tay === 'x') {
-        dat('x', batNac(keo.dau.x + dx, CONFIG.nacDoi))
+        dat('x', batNac(keo.dau.x + doiHut(true, false)[0], CONFIG.nacDoi))
       } else if (keo.tay === 'y') {
-        dat('y', batNac(keo.dau.y + dy, CONFIG.nacDoi))
+        dat('y', batNac(keo.dau.y + doiHut(false, true)[1], CONFIG.nacDoi))
       } else if (keo.tay === 'rotX' || keo.tay === 'rotY' || keo.tay === 'rotZ') {
         /* Chiếu quãng kéo lên tiếp tuyến của vòng, rồi chia cho bán kính của
          * vòng trên màn hình: đi hết một cung bằng bán kính = 1 radian. */
@@ -885,7 +996,11 @@
         // phóng theo TỈ LỆ khoảng cách tới tâm, nên kéo góc nào cũng đúng chiều
         var r1 = Math.hypot(e.clientX - keo.cx, e.clientY - keo.cy)
         var ti = r1 / Math.max(1, keo.r0)
-        dat('w', batNac(Math.round(keo.dau.w * ti), CONFIG.nacDoi))
+        var w2 = batNac(Math.round(keo.dau.w * ti), CONFIG.nacDoi)
+        // Phóng quanh TÂM máy: máy đặt theo tâm (x + w/2), nên bù x/y nửa phần đổi.
+        dat('x', Math.round(keo.dau.x - (w2 - keo.dau.w) / 2))
+        dat('y', Math.round(keo.dau.y - (w2 - keo.dau.w) / 2))
+        dat('w', w2)
       } else if (keo.tay === 'dist') {
         dat('dist', Math.round((keo.dau.dist + dy * 0.05) * 10) / 10)
       }
@@ -910,7 +1025,7 @@
       if (e.target !== cd.boc && e.target.tagName !== 'CANVAS') return
       var m = mocDeSua()
       if (!m) return
-      keoThan = { mx: e.clientX, my: e.clientY, x: m.x, y: m.y, u: tyLe() }
+      keoThan = { mx: e.clientX, my: e.clientY, x: m.x, y: m.y, q: q(), h0: hcnMay() }
       cd.boc.setPointerCapture(e.pointerId)
       e.preventDefault()
     })
@@ -923,8 +1038,11 @@
         : function (v) {
             return v
           }
-      dat('x', b(keoThan.x + (e.clientX - keoThan.mx) / keoThan.u))
-      dat('y', b(keoThan.y + (e.clientY - keoThan.my) / keoThan.u))
+      var pd = e.shiftKey
+        ? [e.clientX - keoThan.mx, e.clientY - keoThan.my]
+        : hut(keoThan.h0, e.clientX - keoThan.mx, e.clientY - keoThan.my)
+      dat('x', b(keoThan.x + pd[0] / keoThan.q.ux))
+      dat('y', b(keoThan.y + pd[1] / keoThan.q.uy))
     })
     function thaThan(e) {
       if (!keoThan) return
@@ -1103,6 +1221,34 @@
     })
     bang.appendChild(el('p', 'kx-cdb__moc-ten', 'Căn máy theo màn hình (lề ' + CONFIG.canLe + ' px thiết kế)'))
     bang.appendChild(hangCan)
+    // Lưới 12 + hít lưới — bật/tắt tại chỗ, không ghi xuống file.
+    var hangLuoi = el('div', 'kx-cdb__hai')
+    var bLuoi = el('button', null, '')
+    var bHut = el('button', null, '')
+    bLuoi.type = 'button'
+    bHut.type = 'button'
+    var veNutLuoi = function () {
+      bLuoi.textContent = '▦ Lưới 12 · ' + (CONFIG.luoi ? 'Hiện' : 'Ẩn')
+      bHut.textContent = '⌖ Hít lưới · ' + (CONFIG.hut ? 'Bật' : 'Tắt')
+      bLuoi.classList.toggle('is-on', !!CONFIG.luoi)
+      bHut.classList.toggle('is-on', !!CONFIG.hut)
+    }
+    bLuoi.title = '12 cột (lề 24, rãnh 16 — như lưới G) + 12 hàng đều theo chiều cao'
+    bHut.title = 'Kéo máy thì mép/tâm hình máy hít vào đường lưới gần nhất. Giữ Shift = bắt nấc thay cho hít.'
+    bLuoi.addEventListener('click', function () {
+      CONFIG.luoi = !CONFIG.luoi
+      veNutLuoi()
+      veLuoi()
+    })
+    bHut.addEventListener('click', function () {
+      CONFIG.hut = !CONFIG.hut
+      veNutLuoi()
+    })
+    veNutLuoi()
+    hangLuoi.appendChild(bLuoi)
+    hangLuoi.appendChild(bHut)
+    bang.appendChild(hangLuoi)
+
     var bCo = el('button', 'kx-cdb__rong', '⇔ Đồng bộ cỡ cho mọi mốc')
     bCo.type = 'button'
     bCo.title = 'Lấy cỡ máy đang thấy ở đây (cạnh ô vẽ + camera lùi) chép sang mọi mốc của viewport này; tâm máy ở từng mốc giữ nguyên'
@@ -1226,11 +1372,13 @@
       cd.deTay(null)
       chonVp(vpDangSua || vpHienTai())
       if (lopMoc) lopMoc.hidden = false
+      veLuoi()
       veLaiCheDo()
       xuatJson()
       if (!rafVong) rafVong = requestAnimationFrame(chayCapNhat)
     } else {
       if (lopMoc) lopMoc.hidden = true
+      if (lopLuoi) lopLuoi.hidden = true
       cd.deTay(null)
     }
   }
@@ -1287,11 +1435,13 @@
       if (!bang.hidden) {
         veLaiVp()
         veDuongMoc() // cao trang đổi → vị trí dấu mốc đổi
+        veLuoi()
         veLaiNote()
       }
     })
 
-    window.KX_CD3D_BUILDER = { config: CONFIG, bat: bat, chonVp: chonVp }
+    // hcnMay / dichLuoi lộ ra để gỡ rối (đo đúng hình máy + đường lưới mà hít dùng).
+    window.KX_CD3D_BUILDER = { config: CONFIG, bat: bat, chonVp: chonVp, hcnMay: hcnMay, dichLuoi: dichLuoi, hut: hut }
   }
 
   // Chờ kx-cd3d.js dựng xong rồi mới nối — nó là module nên chạy sau file này.
