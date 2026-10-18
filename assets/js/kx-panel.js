@@ -216,6 +216,22 @@
       ],
     },
     {
+      id: 'pixel-hover',
+      file: 'assets/js/kx-pixel-hover.js',
+      ten: 'Button Hover',
+      mota: 'Rê vào nút EMAIL ME: lưới pixel quét từ trái sang phủ kín nút (như màn chuyển sau loading), chữ tự đảo màu. Rời chuột thì quét đi.',
+      api: 'KX_PIXEL_HOVER',
+      truong: [
+        { key: 'o', nhan: 'Cỡ ô pixel', min: 3, max: 24, step: 1, don: 'px' },
+        { key: 'vaoMs', nhan: 'Quét vào', min: 80, max: 1500, step: 10, don: 'ms' },
+        { key: 'raMs', nhan: 'Quét đi', min: 80, max: 1500, step: 10, don: 'ms' },
+        { key: 'moMs', nhan: 'Một ô mờ vào/ra', min: 10, max: 400, step: 5, don: 'ms' },
+        { key: 'lech', nhan: 'Lấm tấm trong cột', min: 0, max: 1, step: 0.01, goiY: '0 = quét thành cột thẳng; cao = lấm tấm hơn' },
+        { key: 'color', nhan: 'Màu pixel', type: 'color' },
+        { key: 'blend', nhan: 'Hoà trộn', type: 'chon', chon: [['difference', 'Difference (đảo chữ)'], ['normal', 'Bình thường'], ['exclusion', 'Exclusion']] },
+      ],
+    },
+    {
       id: 'cursor',
       file: 'assets/js/kx-cursor.js',
       ten: 'Cursor',
