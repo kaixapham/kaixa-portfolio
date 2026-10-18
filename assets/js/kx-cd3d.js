@@ -49,7 +49,7 @@ const CONFIG = {
    * vào dòng này. false = KHÔNG dựng three.js (không tốn GPU, không tải deck),
    * ảnh phẳng của Figma hiện lại như bản thiết kế. Khác `enabled`: tắt
    * `enabled` là bỏ hẳn file này, không còn công tắc nào để bật lại. */
-  hien: false,
+  hien: true,
   anchor: '9:3529', // node Figma của ô đĩa phẳng — dùng để suy vị trí mặc định
   hideFlat: true, // false = để lộ cả ảnh phẳng lẫn 3D, tiện so khi chỉnh
   /* Những node PHẲNG mà máy 3D thay thế — giấu hết, không thì trang có đầy
@@ -1173,6 +1173,10 @@ function dung(deck) {
     deTay(t) {
       deTay = t
       if (!t) doLaiBo()
+    },
+    // builder gọi: tư thế NỘI SUY của một dãy tại tiến độ cuộn p (0..1)
+    tuTheTai(d, p) {
+      return tuThe(d || day, p)
     },
     // builder gọi: thay cả dãy đang chạy (chưa ghi xuống localStorage)
     datDay(d) {

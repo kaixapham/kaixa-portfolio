@@ -62,7 +62,11 @@
     '.kx-cdb__goc{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:9px}',
     '.kx-cdb__goc button{padding:5px 2px;font-size:10px}',
     '.kx-cdb__moc{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px}',
-    '.kx-cdb__moc button{min-width:30px}',
+    '.kx-cdb__moc button{min-width:30px;position:relative}',
+    // Màn đã có mốc: chấm nhỏ góc trên phải. Màn đang đứng: viền xanh (is-now).
+    '.kx-cdb__moc button.co-moc::after{content:"";position:absolute;top:3px;right:3px;width:4px;height:4px;border-radius:50%;background:#4a7dff}',
+    '.kx-cdb__moc button.is-on.co-moc::after{background:#0b0b0c}',
+    '.kx-cdb .kx-cdb__moc-ten{width:100%;margin:0 0 2px;color:#6f6f73;font-size:10px}',
     '.kx-cdb button{font:inherit;color:#bdbdc2;background:#151517;border:1px solid #2a2a2c;',
     '  border-radius:4px;padding:5px 4px;cursor:pointer;line-height:1.1;text-align:center}',
     '.kx-cdb button:hover{color:#fff;border-color:#3d3d41}',
@@ -230,29 +234,105 @@
     if (svg) veGizmo()
   }
 
+  /* ------------------------------------------------- MÀN 1…N (người dùng chốt)
+   * Trang Home chia thành từng MÀN cao đúng một viewport, đánh số từ 1 tới
+   * footer. Bấm số nào: trang nhảy tới màn đó, mốc của màn đó được chọn (chưa
+   * có thì sinh ra ngay với tư thế ĐANG NỘI SUY ở đó — nên không có cú nhảy
+   * nào), máy hiện đúng tư thế ở đó để chỉnh. Bản cũ bắt tự cuộn rồi bấm
+   * "+ Mốc ở đây", số trên nút là thứ tự mốc chứ không phải vị trí — khó hiểu.
+   * Màn k bắt đầu ở (k−1)·cao cửa sổ; màn cuối luôn là ĐÁY trang (footer). Mốc
+   * thuộc màn gần nó nhất, trong phạm vi nửa màn. */
+  function cacMan() {
+    var vh = window.innerHeight
+    var tran = Math.max(1, document.documentElement.scrollHeight - vh)
+    var ra = []
+    for (var y = 0; y < tran - vh * 0.25; y += vh) ra.push(y)
+    ra.push(tran)
+    return ra.map(function (y) {
+      return { y: y, at: +(y / tran).toFixed(3), nua: vh / 2 / tran }
+    })
+  }
+
+  // Mốc (chỉ số trong `day`) của màn thứ k, hoặc -1. Mỗi mốc thuộc ĐÚNG MỘT
+  // màn — màn gần nó nhất (màn cuối = footer có thể chỉ cách màn trước nửa
+  // màn hình; xét "trong nửa màn" thôi thì một mốc ở đáy bị tính cho cả hai).
+  function mocCuaMan(ds, k) {
+    var tot = -1
+    var lech = Infinity
+    day.forEach(function (m, i) {
+      var gan = 0
+      for (var j = 1; j < ds.length; j++) {
+        if (Math.abs(ds[j].at - m.at) < Math.abs(ds[gan].at - m.at)) gan = j
+      }
+      if (gan !== k) return
+      var d = Math.abs(m.at - ds[k].at)
+      if (d <= ds[k].nua && d < lech) {
+        lech = d
+        tot = i
+      }
+    })
+    return tot
+  }
+
+  // Màn đang đứng (theo vị trí cuộn thật).
+  function manHienTai(ds) {
+    var y = window.scrollY
+    var k = 0
+    ds.forEach(function (m, i) {
+      if (Math.abs(m.y - y) < Math.abs(ds[k].y - y)) k = i
+    })
+    return k
+  }
+
   function veLaiHangMoc() {
     hangMoc.textContent = ''
-    day.forEach(function (m, i) {
-      var b = el('button', null, String(i + 1))
+    hangMoc.appendChild(el('p', 'kx-cdb__moc-ten', 'Màn (1 = đầu trang, cuối = footer) — chấm xanh = có mốc'))
+    var ds = cacMan()
+    var now = manHienTai(ds)
+    var mocChon = day[iMoc]
+    ds.forEach(function (man, k) {
+      var i = mocCuaMan(ds, k)
+      var b = el('button', null, String(k + 1))
       b.type = 'button'
-      b.title = 'Mốc ở cuộn ' + m.at
-      b.classList.toggle('is-on', i === iMoc)
+      b.title = 'Màn ' + (k + 1) + ' — cuộn ' + man.at + (i >= 0 ? ' (có mốc ở ' + day[i].at + ')' : ' (chưa có mốc)')
+      b.classList.toggle('co-moc', i >= 0)
+      b.classList.toggle('is-on', i >= 0 && day[i] === mocChon)
+      b.classList.toggle('is-now', k === now)
       b.addEventListener('click', function () {
-        chonMoc(i)
+        chonMan(k)
       })
       hangMoc.appendChild(b)
     })
-    var them = el('button', null, '+ Mốc ở đây')
-    them.type = 'button'
-    them.title = 'Thêm một mốc tại vị trí cuộn hiện tại'
-    them.style.flex = '1'
-    them.addEventListener('click', themMoc)
-    hangMoc.appendChild(them)
-    var xoa = el('button', null, '− Xoá')
+    var xoa = el('button', null, '− Xoá mốc')
     xoa.type = 'button'
-    xoa.title = 'Xoá mốc đang chọn'
+    xoa.title = 'Xoá mốc đang chọn — máy về nội suy giữa hai mốc kề bên'
+    xoa.style.flex = '1'
     xoa.addEventListener('click', xoaMoc)
     hangMoc.appendChild(xoa)
+  }
+
+  function chonMan(k) {
+    var ds = cacMan()
+    var man = ds[k]
+    if (!man) return
+    // Nhảy thẳng (không trôi) — kx-smooth-scroll.js tự đồng bộ đích theo vị
+    // trí mới vì đây không phải vị trí do nó ghi.
+    window.scrollTo(0, man.y)
+    var i = mocCuaMan(ds, k)
+    if (i >= 0) {
+      chonMoc(i)
+      nhay('Màn ' + (k + 1) + ' — mốc ở ' + day[i].at)
+      return
+    }
+    // Chưa có mốc: sinh ra với tư thế đang nội suy ở đúng chỗ này.
+    var tw = cd.tuTheTai(day, man.at)
+    var m = Object.assign({}, tw, { at: man.at })
+    day.push(m)
+    day.sort(function (a, b) {
+      return a.at - b.at
+    })
+    chonMoc(day.indexOf(m))
+    nhay('Màn ' + (k + 1) + ' — tạo mốc mới ở ' + man.at + ' (chỉnh rồi bấm Lưu)')
   }
 
   function veLaiO() {
@@ -277,7 +357,8 @@
       now +
       '<br><b>Cuộn hiện tại:</b> ' +
       cd.tienDo().toFixed(3) +
-      (m ? ' — mốc ' + (iMoc + 1) + ' ở ' + m.at : '') +
+      ' — màn ' + (manHienTai(cacMan()) + 1) +
+      (m ? '<br><b>Đang chỉnh mốc ở:</b> ' + m.at : '') +
       '<br><b>Gizmo:</b> G di chuyển · R xoay · S phóng · Shift bắt nấc' +
       (lech
         ? '<br><b style="color:#d8a24a">Đang chỉnh ' +
@@ -323,24 +404,6 @@
     veLaiO()
     apNgay()
     veLaiNote()
-  }
-
-  function themMoc() {
-    // Mốc mới sinh ra ở ĐÚNG tiến độ cuộn hiện tại, và mang tư thế mà trang
-    // đang hiện — nên bấm xong là không có cú nhảy nào, chỉ việc chỉnh tiếp.
-    var p = +cd.tienDo().toFixed(3)
-    var hien = cd.tuThe || day[iMoc]
-    var m = Object.assign({}, hien, { at: p })
-    day.push(m)
-    day.sort(function (a, b) {
-      return a.at - b.at
-    })
-    iMoc = day.indexOf(m)
-    veLaiHangMoc()
-    veLaiO()
-    apNgay()
-    veLaiNote()
-    nhay('Thêm mốc ở ' + p)
   }
 
   function xoaMoc() {
@@ -810,7 +873,7 @@
       el(
         'p',
         'kx-cdb__hint',
-        'Cuộn tới chỗ muốn → "+ Mốc ở đây" → chỉnh bằng gizmo ngay trên máy → Lưu. K để đóng.'
+        'Bấm số MÀN → trang nhảy tới đó → chỉnh bằng gizmo ngay trên máy → Lưu. K để đóng.'
       )
     )
     bang.appendChild(hangCongTac())
@@ -982,7 +1045,13 @@
     addEventListener(
       'scroll',
       function () {
-        if (!bang.hidden) veLaiNote()
+        if (bang.hidden) return
+        veLaiNote()
+        // chỉ đổi viền "màn đang đứng", không dựng lại cả hàng
+        var ds = cacMan()
+        var now = manHienTai(ds)
+        var nut = hangMoc.querySelectorAll('button')
+        for (var k = 0; k < ds.length; k++) if (nut[k]) nut[k].classList.toggle('is-now', k === now)
       },
       { passive: true }
     )
@@ -990,6 +1059,7 @@
     addEventListener('resize', function () {
       if (!bang.hidden) {
         veLaiVp()
+        veLaiHangMoc() // cao cửa sổ đổi → số màn đổi
         veLaiNote()
       }
     })
