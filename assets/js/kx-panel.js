@@ -29,7 +29,8 @@
   'use strict'
 
   /* ------------------------------------------------------------------ MỤC
-   * type: 'range' (mặc định) | 'toggle'. `nhom` là dòng tiêu đề nhỏ chia cụm.
+   * type: 'range' (mặc định) | 'toggle' | 'color' | 'chon' (danh sách chọn,
+   * `chon: [[giá trị, nhãn], …]`, giá trị là chuỗi). `nhom` là dòng tiêu đề nhỏ chia cụm.
    * `don` là đơn vị hiện cạnh số. */
   var MUC = [
     {
@@ -185,6 +186,43 @@
         { key: 'glassShimmer', nhan: 'Vòng lấp lánh', type: 'toggle' },
       ],
     },
+    {
+      id: 'sound',
+      file: 'assets/js/kx-sound.js',
+      ten: 'Sound',
+      mota: 'Tiếng bấm phím khi rê vào dự án — mỗi dự án một nốt, lướt qua là thành giai điệu. Cần bấm một lần trên trang thì trình duyệt mới cho phát.',
+      api: 'KX_SOUND',
+      rung: true,
+      nutThu: 'Nghe thử', // gọi A.rungThu(): chạy một lượt 10 dự án
+      truong: [
+        { nhom: 'Giai điệu' },
+        { key: 'transpose', nhan: 'Trầm / bổng', min: -24, max: 12, step: 1, don: 'cung½', goiY: 'nửa cung; -12 = xuống một quãng tám' },
+        { key: 'scale', nhan: 'Thang âm', type: 'chon', chon: [
+          ['0,2,4,7,9', 'Ngũ cung trưởng'],
+          ['0,3,5,7,10', 'Ngũ cung thứ'],
+          ['0,2,4,5,7,9,11', 'Trưởng'],
+          ['0,2,3,5,7,8,10', 'Thứ tự nhiên'],
+          ['0,1,5,7,8', 'Nhật (In)'],
+          ['0,4,7', 'Hợp âm trưởng'],
+          ['0,3,7', 'Hợp âm thứ'],
+          ['0,2,4,6,8,10', 'Toàn cung (mơ hồ)'],
+        ] },
+        { key: 'noteStep', nhan: 'Bước nốt mỗi dự án', min: 1, max: 4, step: 1, goiY: '2 = nhảy cách một nốt, giai điệu rộng hơn' },
+        { key: 'descend', nhan: 'Lướt xuống = đi xuống', type: 'toggle' },
+        { nhom: 'Âm sắc' },
+        { key: 'volume', nhan: 'Âm lượng', min: 0, max: 1, step: 0.01 },
+        { key: 'decayMs', nhan: 'Độ ngân', min: 0, max: 600, step: 10, don: 'ms', goiY: '0 = ngân hết bản tiếng; thấp = gõ khô, gọn' },
+        { key: 'brightness', nhan: 'Độ sáng', min: 400, max: 16000, step: 50, don: 'Hz', goiY: 'thấp = tròn, ấm; cao = sắc, trong' },
+        { key: 'echo', nhan: 'Độ vang', min: 0, max: 1, step: 0.01 },
+        { key: 'echoMs', nhan: 'Nhịp vang', min: 40, max: 800, step: 10, don: 'ms' },
+        { key: 'echoFeedback', nhan: 'Số lần dội', min: 0, max: 0.9, step: 0.01, goiY: 'cao = dội lâu hơn' },
+        { key: 'minGapMs', nhan: 'Khoảng cách tối thiểu', min: 0, max: 200, step: 5, don: 'ms', goiY: 'lướt rất nhanh thì bỏ bớt tiếng cho khỏi rè' },
+        { nhom: 'Lúc bật sound' },
+        { key: 'henshin', nhan: 'Chuỗi kích hoạt', type: 'toggle', goiY: 'ba phím mã + Enter + khoá sập & điện dâng' },
+        { key: 'henshinVolume', nhan: 'Âm lượng kích hoạt', min: 0, max: 1, step: 0.01 },
+        { key: 'henshinGapMs', nhan: 'Nhịp bấm mã', min: 50, max: 300, step: 5, don: 'ms' },
+      ],
+    },
   ]
 
   var LUU = 'kx-panel:v1'
@@ -234,6 +272,8 @@
     '  border-radius:4px;padding:3px 6px;text-align:right}',
     '.kx-pn .kx-pn__so:focus{outline:none;border-color:#4a7dff}',
     '.kx-pn .kx-pn__don{color:#6f6f73;min-width:14px}',
+    '.kx-pn .kx-pn__chon{font:inherit;color:#fff;background:#151517;border:1px solid #2a2a2c;border-radius:4px;padding:3px 6px;max-width:150px}',
+    '.kx-pn .kx-pn__chon:focus{outline:none;border-color:#4a7dff}',
     '.kx-pn .kx-pn__mau{width:22px;height:20px;padding:0;border:1px solid #2a2a2c;border-radius:4px;',
     '  background:none;cursor:pointer}',
     '.kx-pn .kx-pn__mau::-webkit-color-swatch-wrapper{padding:2px}',
@@ -413,6 +453,32 @@
       hang.appendChild(nhan)
       o.appendChild(hang)
 
+      if (t.type === 'chon') {
+        // Danh sách chọn: giá trị là CHUỖI ghi thẳng vào config.
+        var chon = document.createElement('select')
+        chon.className = 'kx-pn__chon'
+        chon.setAttribute('aria-label', t.nhan)
+        t.chon.forEach(function (c) {
+          var op = document.createElement('option')
+          op.value = c[0]
+          op.textContent = c[1]
+          chon.appendChild(op)
+        })
+        hang.appendChild(chon)
+        chon.addEventListener('change', function () {
+          dat(t, chon.value)
+          nhan.classList.toggle('is-doi', laDoi(t))
+        })
+        var veChon = function () {
+          chon.value = cfg[t.key]
+          nhan.classList.toggle('is-doi', laDoi(t))
+        }
+        ve.push(veChon)
+        veChon()
+        if (t.goiY) o.appendChild(el('p', 'kx-pn__goiy', t.goiY))
+        than.appendChild(o)
+        return
+      }
       if (t.type === 'color') {
         var mau = document.createElement('input')
         mau.type = 'color'
@@ -526,9 +592,9 @@
       }, 2200)
     }
 
-    var bRung = el('button', null, 'Rung thử')
+    var bRung = el('button', null, m.nutThu || 'Rung thử')
     bRung.type = 'button'
-    bRung.title = 'Đá một nhịp sóng để xem, khỏi phải cuộn'
+    bRung.title = m.nutThu ? 'Chạy thử một lượt' : 'Đá một nhịp sóng để xem, khỏi phải cuộn'
     bRung.disabled = !m.rung || typeof A.rungThu !== 'function'
     bRung.addEventListener('click', function () {
       A.rungThu()

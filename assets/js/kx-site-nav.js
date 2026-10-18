@@ -84,7 +84,8 @@
       nav.style.bottom = 'calc(' + CONFIG.navBottom + ' * var(--px))'
     }
     link($('1:464'), 'home.html', 'Home')
-    link($('1:476'), 'mailto:' + CONFIG.email, 'Email ' + CONFIG.email)
+    // Ô vuông thứ hai (1:476) vốn là ô thư, nay là nút bật/tắt sound — do
+    // kx-sound.js lo. Thư vẫn gửi được qua các nút EMAIL ME trên trang.
 
     var menu = document.createElement('nav')
     menu.className = 'kx-menu'
