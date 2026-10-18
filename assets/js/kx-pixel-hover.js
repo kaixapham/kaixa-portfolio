@@ -6,8 +6,10 @@
  * trong khung nút:
  *   - rê vào: ô pixel quét từ trái sang, mờ vào lệch nhịp, phủ kín nút;
  *   - rời:    ô pixel quét đi theo cùng chiều, nút về như cũ.
- * Lớp pixel trộn `difference` nên chữ + icon tự đảo màu (nền sáng, chữ tối)
- * mà không phải sửa màu từng phần tử.
+ * Lớp pixel nằm DƯỚI chữ (chèn làm con đầu tiên của nút), trộn bình thường;
+ * chữ chuyển ĐEN + icon đen khi pixel đã phủ quá nửa (người dùng chốt "text
+ * bên trong khi hover phải màu đen"). Bản đầu dùng `difference` cho chữ tự
+ * đảo màu — nhưng xám #4d4d4d trên trắng chỉ đảo thành xám nhạt, không đen.
  *
  * Lưới dựng MỘT LẦN cho mỗi nút (lần rê đầu), mốc giờ của từng ô tính sẵn;
  * mỗi lần rê chỉ chạy Web Animations trên các ô có sẵn — không cấp phát gì
@@ -30,7 +32,8 @@
     moMs: 90, // một ô mờ vào / mờ ra
     lech: 0.35, // 0..1 — ô trong cùng cột lệch nhau ngẫu nhiên bao nhiêu
     color: '#ffffff',
-    blend: 'difference', // difference = chữ tự đảo màu
+    chuMau: '#000000', // màu chữ + icon khi hover (bỏ qua nếu blend = difference)
+    blend: 'normal', // 'difference' = chữ tự đảo màu (xám → xám nhạt), không đổi màu chữ
   }
 
   var S = CONFIG
@@ -42,8 +45,15 @@
     daCss = true
     var st = document.createElement('style')
     st.textContent = [
-      '.kx-ph{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:5}',
+      // Lớp pixel là con ĐẦU TIÊN của nút, z-index auto → các con định vị sau nó
+      // (chữ, icon, viền) vẽ ĐÈ lên — chữ nằm trên nền pixel.
+      '.kx-ph{position:absolute;inset:0;overflow:hidden;pointer-events:none}',
       '.kx-ph__o{position:absolute;opacity:0}',
+      // Chữ + icon về đen khi hover. Màu chữ chép inline từng lần (CONFIG.chuMau).
+      '.kx-page .kx-ph-on p{color:var(--kx-ph-chu)!important}',
+      '.kx-page .kx-ph-on img{filter:brightness(0)}',
+      '.kx-page .kx-ph-nut p{transition:color var(--kx-ph-t, .2s) ease var(--kx-ph-tre, 0s)}',
+      '.kx-page .kx-ph-nut img{transition:filter var(--kx-ph-t, .2s) ease var(--kx-ph-tre, 0s)}',
     ].join('\n')
     document.head.appendChild(st)
   }
@@ -86,7 +96,7 @@
       }
     }
     if (getComputedStyle(nut).position === 'static') nut.style.position = 'relative'
-    nut.appendChild(lop)
+    nut.insertBefore(lop, nut.firstChild) // DƯỚI chữ
     return { lop: lop, o: ds, ky: S.o + '|' + S.color + '|' + S.blend + '|' + Math.round(r.width) }
   }
 
@@ -99,6 +109,14 @@
       g = nut.__kxPh = dungLuoi(nut)
     }
     var tong = vao ? S.vaoMs : S.raMs
+    // Chữ đen khi pixel đã phủ ~nửa nút (vào); rời thì về màu cũ ngay — không thì
+    // phần chữ chưa/không còn pixel sẽ đen chìm vào nền đen.
+    var doiChu = S.blend !== 'difference'
+    nut.classList.add('kx-ph-nut')
+    nut.style.setProperty('--kx-ph-chu', S.chuMau)
+    nut.style.setProperty('--kx-ph-t', (vao ? Math.round(tong * 0.35) : 120) + 'ms')
+    nut.style.setProperty('--kx-ph-tre', (vao ? Math.round(tong * 0.45) : 0) + 'ms')
+    nut.classList.toggle('kx-ph-on', doiChu && vao)
     g.o.forEach(function (p) {
       // Độ phủ THẬT lúc này (kể cả đang chạy dở) — rê ra/vào giữa chừng thì đi
       // tiếp từ đó, không nhảy.

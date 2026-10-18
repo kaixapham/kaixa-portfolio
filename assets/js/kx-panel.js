@@ -228,7 +228,8 @@
         { key: 'moMs', nhan: 'Một ô mờ vào/ra', min: 10, max: 400, step: 5, don: 'ms' },
         { key: 'lech', nhan: 'Lấm tấm trong cột', min: 0, max: 1, step: 0.01, goiY: '0 = quét thành cột thẳng; cao = lấm tấm hơn' },
         { key: 'color', nhan: 'Màu pixel', type: 'color' },
-        { key: 'blend', nhan: 'Hoà trộn', type: 'chon', chon: [['difference', 'Difference (đảo chữ)'], ['normal', 'Bình thường'], ['exclusion', 'Exclusion']] },
+        { key: 'chuMau', nhan: 'Màu chữ khi hover', type: 'color' },
+        { key: 'blend', nhan: 'Hoà trộn', type: 'chon', chon: [['normal', 'Bình thường (chữ đổi màu)'], ['difference', 'Difference (chữ tự đảo)'], ['exclusion', 'Exclusion']] },
       ],
     },
     {
