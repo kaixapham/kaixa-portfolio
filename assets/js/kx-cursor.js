@@ -45,7 +45,7 @@
     mercury: 'assets/img/cursor/mercury.webp|0.03|0.03|0.26|0.25',
     probe: 'assets/img/cursor/probe.webp|0.12|0.032|0.57|0.52',
     beetle: 'assets/img/cursor/beetle.webp|0.138|0.021|0.54|0.43',
-    size: 40, // px CSS thật (không theo px thiết kế — con trỏ giữ cỡ cố định)
+    size: 32, // px CSS thật (không theo px thiết kế — con trỏ giữ cỡ cố định)
     tilt: 14, // độ — nghiêng tối đa theo hướng di chuột (0 = không nghiêng)
     tiltEase: 0.18, // 0..1 mỗi khung 60fps — nghiêng / về thẳng nhanh cỡ nào
     hoverScale: 1.18, // rê vào link, nút

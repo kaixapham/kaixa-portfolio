@@ -58,7 +58,7 @@
     // Chỗ có tiếng khi rê vào: mỗi cụm dự án của Feature Works ©12 (Home).
     // Nốt = thứ tự của cụm trong khối cha.
     hover: '[data-n="1:205"] > div, [data-n="1:217"] > div',
-    preset: 'droid', // droid | down | glass | scan | ping | warm | switch | flip
+    preset: 'switch', // droid | down | glass | scan | ping | warm | switch | flip
     // Đường dẫn TƯƠNG ĐỐI (luật số 5). Hz = cao độ đo được, Root = nốt gốc.
     droidSrc: 'assets/sound/droid.mp3',
     droidHz: 1130,
