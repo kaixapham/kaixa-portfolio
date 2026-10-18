@@ -461,8 +461,27 @@ html[data-kx-ld='on'] :is(${S.hide}){visibility:hidden}
    * contact, không bao giờ sang Home. Đây từng là lỗi thật. */
   let laLanDau = false
 
+  /* BẤM REFRESH thì chạy lại màn loading (người dùng chốt). Hai đường vào:
+   *   - refresh chính trang này (contact): kiểu điều hướng là 'reload' → chạy
+   *     loading rồi Ở LẠI contact (lượt đầu của phiên thì vẫn sang Home);
+   *   - refresh ở bốn trang Figma: đoạn script đầu <head> của chúng chuyển sang
+   *     `index.html?ve=<trang>` → chạy loading rồi QUAY VỀ đúng trang đó.
+   * `ve` chỉ nhận các trang của site (không cho chuyển hướng tuỳ ý). */
+  const VE_DUOC = ['home.html', 'works.html', 'work-detail.html', 'about.html']
+  let ve = ''
+  let laTaiLai = false
+  try {
+    const v = new URLSearchParams(location.search).get('ve') || ''
+    if (VE_DUOC.indexOf(v) !== -1) ve = v
+  } catch (e) {}
+  try {
+    const n = performance.getEntriesByType('navigation')[0]
+    laTaiLai = !!n && n.type === 'reload'
+  } catch (e) {}
+
   /* Loading xong thì đi đâu — trả về '' nghĩa là ở lại trang này. */
   function diDau() {
+    if (ve) return ve
     if (!S.goTo) return ''
     if (S.goToOnce && !laLanDau) return ''
     return S.goTo
@@ -490,11 +509,18 @@ html[data-kx-ld='on'] :is(${S.hide}){visibility:hidden}
     }
 
     // Sắp rời trang thì KHÔNG cắt lớp phủ đi: cắt là lộ trang contact ra một
-    // nhịp rồi mới nhảy, nhìn như chớp nhầm trang. Giữ lớp phủ nguyên, cho dải
-    // pixel quét ngang qua nó, quét xong mới điều hướng.
+    // nhịp rồi mới nhảy, nhìn như chớp nhầm trang. Giữ lớp phủ nguyên, điều
+    // hướng ngay; trang tới tự quét dải pixel lộ chính nó.
     const roiTrang = !!diDau()
     const pt = window.KX_PAGE_TRANSITION
     if (pt && pt.config.enabled) {
+      // Rời trang: KHÔNG quét gì ở đây — hẹn trang sau quét (lớp đen màu nền
+      // bị dải pixel cắt đi, lộ Home), rồi đi ngay. Xem kx-page-transition.js.
+      if (roiTrang && pt.henMo) {
+        pt.henMo()
+        diThoi()
+        return
+      }
       pt.run(roiTrang ? null : root).then(roiTrang ? diThoi : bao)
       return
     }
@@ -532,7 +558,7 @@ html[data-kx-ld='on'] :is(${S.hide}){visibility:hidden}
     // `kx-loading-done`, vì kx-burning-open.js chờ đúng sự kiện đó mới chạy;
     // không phát thì màn mở đầu của trang contact vĩnh viễn không bao giờ chạy.
     laLanDau = !daVao()
-    if (S.goTo && S.goToOnce && !laLanDau) {
+    if (S.goTo && S.goToOnce && !laLanDau && !laTaiLai && !ve) {
       document.documentElement.removeAttribute('data-kx-ld')
       window.dispatchEvent(new CustomEvent('kx-loading-done'))
       return

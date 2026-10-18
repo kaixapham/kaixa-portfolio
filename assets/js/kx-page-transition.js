@@ -21,7 +21,22 @@
  * NGƯỢC LẠI, tức cắt dần lớp phủ đang che nó. Nhìn ra kết quả y hệt.
  *
  * CÁCH DÙNG: gọi `KX_PAGE_TRANSITION.run(el)` với `el` là lớp cần cắt đi. Trả
- * về một Promise, xong dải pixel thì nó resolve. File này KHÔNG chứa UI setting
+ * về một Promise, xong dải pixel thì nó resolve.
+ *
+ * CHUYỂN SANG TRANG KHÁC (màn loading → Home, người dùng chốt): trang cũ
+ * gọi `henMo()` (ghi cờ `kx-pt:mo` vào sessionStorage, kèm các số của lưới) rồi
+ * điều hướng NGAY. Trang mới nạp file này, thấy cờ thì `mo()`: phủ một lớp
+ * ĐEN màu nền (`coverColor`) rồi chạy đúng `run()` như cũ — dải pixel quét
+ * ngang, lớp đen bị cắt theo bậc phía sau dải, trang mới lộ ra từng khoảng.
+ *   - Bản đầu quét cả vào lẫn ra trên chính màn loading rồi mới nhảy: Home
+ *     hiện ra trần trụi, không có hiệu ứng.
+ *   - Bản thứ hai chia đôi: pixel phủ TRẮNG kín màn hình, sang trang rồi quét
+ *     ra. Người dùng chê "sao phải quét qua một cái màn hình trắng" — dải pixel
+ *     chỉ là một DẢI, không phải tấm phủ. Đừng đưa lại.
+ * Khung hình ĐẦU TIÊN của trang mới phải đã bị phủ: một đoạn script nhỏ trong
+ * <head> (generator) thấy cờ thì gắn `kx-pt-che` lên <html>, CSS phủ màu nền
+ * bằng html::after — không thì trang lộ ra một nhịp trước khi file này kịp
+ * chạy ở cuối <body>.
  * — bảng tinh chỉnh ở kx-devtools.js (tab "Chuyển màn").
  * ========================================================================== */
 (() => {
@@ -36,11 +51,20 @@
     pixelFade: 0.2, // giây — một pixel mờ vào (và mờ ra) mất bấy nhiêu
     overlap: 0.3, // 0..1 — pixel trong cùng một cột sáng chồng lên nhau bao nhiêu
 
+    // Mép dải thành hình MŨI TÊN (người dùng gợi ý): hàng giữa đi trước hàng
+    // mép bấy nhiêu phần bề ngang màn hình. 0 = thẳng như cũ; dương = mũi tên
+    // chỉ theo hướng quét ">"; âm = chữ V ngược "<". Lớp phủ cũng cắt theo
+    // đúng đường gấp khúc đó.
+    arrow: 0,
+
     color: '#ffffff', // màu pixel
     rainbow: false, // true = trải cầu vồng theo vị trí, bỏ qua `color`
     blend: 'normal', // mix-blend-mode của lưới; 'difference' hợp tông trang
 
     zIndex: 100,
+    // Chuyển sang trang khác (màn loading → Home):
+    coverColor: '#040203', // màu lớp phủ ở trang mới — đúng nền màn loading
+    revealWait: 600, // ms — trang mới chờ font tối đa bấy nhiêu rồi mới mở
   }
 
   const S = CONFIG
@@ -61,11 +85,16 @@
   mix-blend-mode:${S.blend}}
 .kx-pt__panel{position:absolute;inset:0;display:flex;width:100%;height:100%}
 .kx-pt__col{display:flex;flex:1 1 auto;justify-content:center}
-.kx-pt__px{aspect-ratio:1;width:100%;opacity:0;background:${S.color};will-change:opacity}
+.kx-pt__px{aspect-ratio:1;width:100%;opacity:0;background:${S.color};box-shadow:0 0 0 1px ${S.color}}
 `
   }
 
-  /* ------------------------------------------------------------------ lưới */
+  /* ------------------------------------------------------------------ lưới
+   * Lưới phủ kín mà vẫn thấy trang bên dưới KẺ SỌC xuyên qua khe giữa các ô:
+   * mỗi ô từng mang `will-change: opacity` nên thành một lớp compositor riêng
+   * (hơn 1300 lớp), mỗi lớp khử răng cưa mép riêng và mép không khít nhau —
+   * nở ô bằng scale cũng không lấp được. Bỏ will-change (ô màu trơn vẽ lại rất
+   * rẻ) và lót viền bóng 1px cùng màu để lấp khe làm tròn. Đây từng là lỗi thật. */
 
   let wrap = null
   let panel = null
@@ -98,7 +127,9 @@
         const px = document.createElement('div')
         px.className = 'kx-pt__px'
         col.appendChild(px)
-        oPixel.push({ el: px, cot: i, hang: j })
+        // f: 1 ở giữa bề ngang, 0 ở hai mép — dùng cho mép hình mũi tên.
+        const giua = Math.min(1, ((j + 0.5) * canh) / (dung ? r.width : r.height))
+        oPixel.push({ el: px, cot: i, hang: j, f: 1 - Math.abs(2 * giua - 1) })
       }
       panel.appendChild(col)
     }
@@ -106,7 +137,9 @@
     if (S.rainbow) {
       const tong = oPixel.length
       oPixel.forEach((p, k) => {
-        p.el.style.background = `hsl(${Math.round((k / Math.max(1, tong - 1)) * 360)} 90% 60%)`
+        const mau = `hsl(${Math.round((k / Math.max(1, tong - 1)) * 360)} 90% 60%)`
+        p.el.style.background = mau
+        p.el.style.boxShadow = `0 0 0 1px ${mau}`
       })
     }
     return { soCot, soPixel }
@@ -116,8 +149,8 @@
    * Chép đúng công thức của bản gốc, chỉ đổi từ timeline GSAP sang mốc thời
    * gian tuyệt đối để một vòng rAF tự tra. */
 
-  function lenLich(soCot, soPixel) {
-    const dai = Math.max(0.05, S.duration)
+  function lenLich(soCot, soPixel, daiRieng) {
+    const dai = Math.max(0.05, daiRieng || S.duration)
     const mo = Math.max(0.001, S.pixelFade)
     const chong = clamp(S.overlap, 0, 1)
 
@@ -128,8 +161,15 @@
     const moiPixel = (mo / soPixel) * (1 - chong) + mo * chong
     const trai = Math.max(0, mo - moiPixel)
 
+    // Mũi tên: mép cắt của hàng có hệ số f nằm ở base + arrow·f, với base chạy
+    // từ -max(arrow,0) tới 1 + max(-arrow,0). Pixel cột i bị chạm khi mép tới
+    // i/soCot. arrow = 0 thì ra đúng công thức cũ: batDauCat + i·buoc.
+    const mui = clamp(S.arrow || 0, -0.9, 0.9)
+    const truoc = Math.max(mui, 0)
+    const quang = 1 + Math.abs(mui)
     oPixel.forEach((p) => {
-      const loRa = batDauCat + p.cot * buoc
+      const k = (p.cot / soCot - mui * p.f + truoc) / quang
+      const loRa = batDauCat + k * daiCat
       const vao = Math.max(0, loRa - mo)
       const ra = Math.min(dai, loRa + buoc)
       // Lệch ngẫu nhiên trong cột — bản gốc dùng stagger `from: "random"`.
@@ -138,7 +178,7 @@
       p.dai = Math.max(0.001, moiPixel)
     })
 
-    return { dai, batDauCat, daiCat, buoc }
+    return { dai, batDauCat, daiCat, buoc, mui, truoc, quang }
   }
 
   /* ------------------------------------------------------------------ chạy */
@@ -184,8 +224,18 @@
         // pixel đang che nó.
         if (el) {
           const k2 = clamp((t - nhip.batDauCat) / nhip.daiCat, 0, 1)
-          const phan = (Math.floor(k2 * soCot) / soCot) * 100
-          el.style.clipPath = dung ? `inset(${phan}% 0 0 0)` : `inset(0 0 0 ${phan}%)`
+          const kb = Math.floor(k2 * soCot) / soCot
+          if (!nhip.mui) {
+            const phan = kb * 100
+            el.style.clipPath = dung ? `inset(${phan}% 0 0 0)` : `inset(0 0 0 ${phan}%)`
+          } else {
+            // Mép gấp khúc: hai mép ở `canh`, giữa ở `canh + mui`.
+            const canh = (-nhip.truoc + nhip.quang * kb) * 100
+            const giua = canh + nhip.mui * 100
+            el.style.clipPath = dung
+              ? `polygon(0 ${canh}%, 50% ${giua}%, 100% ${canh}%, 100% 100%, 0 100%)`
+              : `polygon(${canh}% 0, 100% 0, 100% 100%, ${canh}% 100%, ${giua}% 50%)`
+          }
         }
 
         if (t < buocCuoi) {
@@ -212,10 +262,66 @@
   }
 
   // Chỉ để bảng tinh chỉnh (kx-devtools.js) đọc/ghi lúc chạy.
+  /* ------------------------------------------------- chuyển sang trang khác */
+
+  const CO = 'kx-pt:mo'
+
+  // Ghi cờ cho trang sắp tới — gọi ngay trước khi điều hướng.
+  function henMo() {
+    try {
+      sessionStorage.setItem(CO, JSON.stringify({
+        cols: S.cols, duration: S.duration, pixelFade: S.pixelFade, overlap: S.overlap,
+        arrow: S.arrow, color: S.color, rainbow: S.rainbow, blend: S.blend,
+        coverColor: S.coverColor, revealWait: S.revealWait,
+      }))
+    } catch (e) {}
+  }
+
+  // Ở trang mới: phủ lớp đen rồi cho dải pixel cắt nó đi — đúng run() cũ.
+  function mo(soCu) {
+    if (soCu) Object.assign(S, soCu)
+    // Trên mọi thứ của trang (nav, bảng, máy CD…), chỉ dưới con trỏ.
+    S.zIndex = 2147483000
+    const phu = document.createElement('div')
+    phu.setAttribute('aria-hidden', 'true')
+    phu.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2147482999;background:' + S.coverColor
+    document.body.appendChild(phu)
+    // Lớp phủ thật đã nằm đó thì bỏ lớp phủ tạm của <head>.
+    document.documentElement.classList.remove('kx-pt-che')
+    let da = false
+    const chay = () => {
+      if (da) return
+      da = true
+      requestAnimationFrame(() => run(phu).then(() => phu.remove()))
+    }
+    // Chờ font (chữ đổi font giữa lúc lộ ra là thấy rõ) nhưng không quá `revealWait`.
+    setTimeout(chay, S.revealWait)
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(chay)
+    else chay()
+  }
+
+  // Trang mới: có cờ thì mở. Chạy ngay lúc file nạp (cuối <body>), không chờ
+  // DOMContentLoaded — lớp phủ tạm của <head> đang che, càng sớm càng tốt.
+  ;(function () {
+    let soCu = null
+    try {
+      const v = sessionStorage.getItem(CO)
+      if (v) {
+        sessionStorage.removeItem(CO)
+        soCu = JSON.parse(v)
+      }
+    } catch (e) {}
+    if (soCu && document.body) mo(soCu)
+    else document.documentElement.classList.remove('kx-pt-che')
+  })()
+
   window.KX_PAGE_TRANSITION = {
     config: S,
     defaults: Object.freeze({ ...CONFIG }),
     run,
+    henMo,
+    // Bảng H: "Chạy thử" — phủ đen rồi quét ngay trên trang đang xem.
+    rungThu: () => { if (!dangChay) mo() },
     dangChay: () => dangChay,
     restyle,
   }

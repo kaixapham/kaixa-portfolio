@@ -28,6 +28,11 @@
  *   scan  — quét số có hạt bit-crush, kết bằng blip (~610 Hz, gốc D5)
  *   ping  — luồng gió dâng thành tiếng ping kim loại (~1400 Hz, gốc E6)
  *   warm  — servo quét lên thành chíp tròn ấm (~2590 Hz, gốc E6)
+ * Hai preset thêm theo yêu cầu (ngoài hướng droid):
+ *   switch — tiếng gạt công tắc, click gọn ~20 ms
+ *   flip   — tiếng lật một tấm ảnh in (giấy phẩy + tách nhẹ)
+ * Hai tiếng này là tiếng NHIỄU, không có cao độ: đặt Hz = Root để dự án đầu
+ * phát đúng tốc độ gốc; các dự án sau vẫn cao dần theo thang.
  *
  * Bấm BẬT sound thì phát chuỗi "kích hoạt": ba tiếng bíp nhập mã + một tiếng
  * Enter (`henshinNotes`, bằng CHÍNH nhạc cụ bíp ở trên nên cùng chất tiếng,
@@ -53,7 +58,7 @@
     // Chỗ có tiếng khi rê vào: mỗi cụm dự án của Feature Works ©12 (Home).
     // Nốt = thứ tự của cụm trong khối cha.
     hover: '[data-n="1:205"] > div, [data-n="1:217"] > div',
-    preset: 'droid', // droid | down | glass | scan | ping | warm
+    preset: 'droid', // droid | down | glass | scan | ping | warm | switch | flip
     // Đường dẫn TƯƠNG ĐỐI (luật số 5). Hz = cao độ đo được, Root = nốt gốc.
     droidSrc: 'assets/sound/droid.mp3',
     droidHz: 1130,
@@ -73,12 +78,18 @@
     warmSrc: 'assets/sound/droid-warm.mp3',
     warmHz: 2590,
     warmRoot: 1318.5, // E6
+    switchSrc: 'assets/sound/switch.mp3',
+    switchHz: 1000, // không có cao độ — Hz = Root
+    switchRoot: 1000,
+    flipSrc: 'assets/sound/flip.mp3',
+    flipHz: 1000, // không có cao độ — Hz = Root
+    flipRoot: 1000,
     transpose: 12, // nửa cung — độ TRẦM BỔNG của cả chuỗi (-12 = xuống một quãng tám)
     scale: '0,2,4,7,9', // ngũ cung trưởng, nửa cung — hết thang thì lên quãng tám
     noteStep: 1, // mỗi dự án nhảy bao nhiêu bậc của thang (2 = cách một nốt)
     descend: false, // true = lướt xuống danh sách thì giai điệu đi XUỐNG
-    volume: 0.35, // 0..1
-    decayMs: 0, // độ ngân: tắt dần trong chừng này ms (0 = để bản tiếng ngân hết)
+    volume: 0.37, // 0..1
+    decayMs: 600, // độ ngân: tắt dần trong chừng này ms (0 = để bản tiếng ngân hết)
     brightness: 12000, // Hz — bộ lọc thông thấp; hạ xuống là tiếng tròn, ấm hơn
     echo: 0, // 0..1 — độ vang (tiếng dội lặp lại)
     echoMs: 180, // khoảng cách giữa hai tiếng dội
