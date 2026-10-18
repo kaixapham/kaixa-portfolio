@@ -187,6 +187,37 @@
       ],
     },
     {
+      id: 'cursor',
+      file: 'assets/js/kx-cursor.js',
+      ten: 'Cursor',
+      mota: 'Con trỏ chrome dáng mũi tên — 11 kiểu do Magnific vẽ. Trong bảng setting vẫn là con trỏ hệ thống.',
+      api: 'KX_CURSOR',
+      truong: [
+        { key: 'kieu', nhan: 'Kiểu', type: 'chon', chon: [
+          ['alien', 'Tàu alien'],
+          ['ufo', 'Đĩa bay'],
+          ['jet', 'Phi cơ tàng hình'],
+          ['claw', 'Vuốt sinh-cơ'],
+          ['crystal', 'Pha lê'],
+          ['squid', 'Mực alien'],
+          ['rocket', 'Tên lửa retro'],
+          ['mecha', 'Giáp cơ giới'],
+          ['mercury', 'Thuỷ ngân'],
+          ['probe', 'Vệ tinh'],
+          ['beetle', 'Bọ máy'],
+        ] },
+        { key: 'size', nhan: 'Cỡ', min: 20, max: 72, step: 1, don: 'px' },
+        { nhom: 'Chuyển động' },
+        { key: 'tilt', nhan: 'Nghiêng theo hướng di', min: 0, max: 30, step: 1, don: '°' },
+        { key: 'tiltEase', nhan: 'Độ bám nghiêng', min: 0.02, max: 0.6, step: 0.01 },
+        { key: 'hoverScale', nhan: 'Phóng khi rê vào link', min: 0.8, max: 1.6, step: 0.01 },
+        { key: 'downScale', nhan: 'Thu khi bấm', min: 0.6, max: 1.1, step: 0.01 },
+        { nhom: 'Ánh sáng' },
+        { key: 'glow', nhan: 'Sáng nhấp nháy', type: 'toggle' },
+        { key: 'glowMs', nhan: 'Nhịp sáng', min: 200, max: 3000, step: 50, don: 'ms' },
+      ],
+    },
+    {
       id: 'sound',
       file: 'assets/js/kx-sound.js',
       ten: 'Sound',
@@ -195,6 +226,15 @@
       rung: true,
       nutThu: 'Nghe thử', // gọi A.rungThu(): chạy một lượt 10 dự án
       truong: [
+        { nhom: 'Nhạc cụ' },
+        { key: 'preset', nhan: 'Preset', type: 'chon', chon: [
+          ['droid', 'Droid sweep'],
+          ['down', 'Droid down'],
+          ['glass', 'Droid glass'],
+          ['scan', 'Droid scan'],
+          ['ping', 'Droid ping'],
+          ['warm', 'Droid warm'],
+        ], goiY: 'mọi núm bên dưới áp chung lên preset đang chọn' },
         { nhom: 'Giai điệu' },
         { key: 'transpose', nhan: 'Trầm / bổng', min: -24, max: 12, step: 1, don: 'cung½', goiY: 'nửa cung; -12 = xuống một quãng tám' },
         { key: 'scale', nhan: 'Thang âm', type: 'chon', chon: [
@@ -465,6 +505,10 @@
           chon.appendChild(op)
         })
         hang.appendChild(chon)
+        // Giá trị đã nhớ không còn trong danh sách (vd. preset đã bị bỏ) → về
+        // mặc định, không để ô chọn trống.
+        var coTrong = t.chon.some(function (c) { return c[0] === cfg[t.key] })
+        if (!coTrong) dat(t, def[t.key])
         chon.addEventListener('change', function () {
           dat(t, chon.value)
           nhan.classList.toggle('is-doi', laDoi(t))

@@ -5,14 +5,29 @@
  * icon loa có sóng = đang bật, loa có dấu x = đang tắt. Bật/tắt nhớ trong
  * localStorage nên sang trang khác vẫn giữ.
  *
- * Rê chuột vào một cụm dự án (`hover`) thì phát một tiếng BẤM PHÍM điện thoại
- * gập — và chuỗi tiếng có NHẠC TÍNH (người dùng chốt): mỗi dự án là một nốt
- * của thang ngũ cung (`scale`, nửa cung tính từ `rootHz`), cụm thứ i bên trái
+ * Rê chuột vào một cụm dự án (`hover`) thì phát một tiếng DROID SWEEP — và
+ * chuỗi tiếng có NHẠC TÍNH (người dùng chốt): mỗi dự án là một nốt của thang
+ * ngũ cung (`scale`, nửa cung tính từ nốt gốc của preset), cụm thứ i bên trái
  * và bên phải cùng một nốt. Lướt xuống danh sách = giai điệu đi lên, lướt lên
  * = đi xuống; ngũ cung nên hai nốt bất kỳ đứng cạnh nhau vẫn thuận tai.
- * Nhạc cụ là MỘT bản tiếng bíp tạo bằng Magnific (sfx) — gần như thuần một cao
- * độ (đo ~1220 Hz, `noteHz`) — đổi nốt bằng `playbackRate`. Đừng thêm lệch cao
- * độ ngẫu nhiên: nó làm lạc điệu.
+ * Nhạc cụ là MỘT bản tiếng ngắn tạo bằng Magnific (sfx), đổi nốt bằng
+ * `playbackRate`. Đừng thêm lệch cao độ ngẫu nhiên: nó làm lạc điệu.
+ *
+ * PRESET = chọn nhạc cụ (`preset`). Mỗi preset ba khoá phẳng cùng tiền tố:
+ * `<tên>Src` (file), `<tên>Hz` (cao độ ĐO ĐƯỢC của file), `<tên>Root` (nốt
+ * của dự án đầu tiên — đặt gần cao độ tự nhiên để tiếng ít bị méo). Mọi núm
+ * khác (thang, trầm bổng, ngân, sáng, vang) áp chung lên preset đang chọn.
+ * Người dùng chốt HƯỚNG "DROID SWEEP" (tiếng quét synth + tiếng chíp droid,
+ * theo tinh thần một ref sfx sci-fi họ gửi — tiếng do Magnific tạo mới), bỏ hết
+ * các preset kiểu khác (bấm phím, alien, sci-fi, war machine, futuristic,
+ * warp, robot). Sáu preset, đều là tiếng QUÉT nên không thuần một cao độ: Hz
+ * là cao độ nổi trội của khung to nhất, giai điệu vẫn đúng TƯƠNG ĐỐI.
+ *   droid — quét dâng, kết bằng tiếng chíp (~1130 Hz, gốc C6) — bản gốc chốt
+ *   down  — quét đi xuống, chíp mềm (~650 Hz, gốc D5)
+ *   glass — quét kính dâng lên, chíp đôi (~850 Hz, gốc G5)
+ *   scan  — quét số có hạt bit-crush, kết bằng blip (~610 Hz, gốc D5)
+ *   ping  — luồng gió dâng thành tiếng ping kim loại (~1400 Hz, gốc E6)
+ *   warm  — servo quét lên thành chíp tròn ấm (~2590 Hz, gốc E6)
  *
  * Bấm BẬT sound thì phát chuỗi "kích hoạt": ba tiếng bíp nhập mã + một tiếng
  * Enter (`henshinNotes`, bằng CHÍNH nhạc cụ bíp ở trên nên cùng chất tiếng,
@@ -38,11 +53,27 @@
     // Chỗ có tiếng khi rê vào: mỗi cụm dự án của Feature Works ©12 (Home).
     // Nốt = thứ tự của cụm trong khối cha.
     hover: '[data-n="1:205"] > div, [data-n="1:217"] > div',
-    // Đường dẫn TƯƠNG ĐỐI (luật số 5).
-    noteSrc: 'assets/sound/phim.mp3',
-    noteHz: 1220, // cao độ đo được của bản tiếng
-    rootHz: 587.33, // nốt của dự án đầu tiên (D5)
-    transpose: 0, // nửa cung — độ TRẦM BỔNG của cả chuỗi (-12 = xuống một quãng tám)
+    preset: 'droid', // droid | down | glass | scan | ping | warm
+    // Đường dẫn TƯƠNG ĐỐI (luật số 5). Hz = cao độ đo được, Root = nốt gốc.
+    droidSrc: 'assets/sound/droid.mp3',
+    droidHz: 1130,
+    droidRoot: 1046.5, // C6
+    downSrc: 'assets/sound/droid-down.mp3',
+    downHz: 650,
+    downRoot: 587.33, // D5
+    glassSrc: 'assets/sound/droid-glass.mp3',
+    glassHz: 850,
+    glassRoot: 783.99, // G5
+    scanSrc: 'assets/sound/droid-scan.mp3',
+    scanHz: 610,
+    scanRoot: 587.33, // D5
+    pingSrc: 'assets/sound/droid-ping.mp3',
+    pingHz: 1400,
+    pingRoot: 1318.5, // E6
+    warmSrc: 'assets/sound/droid-warm.mp3',
+    warmHz: 2590,
+    warmRoot: 1318.5, // E6
+    transpose: 12, // nửa cung — độ TRẦM BỔNG của cả chuỗi (-12 = xuống một quãng tám)
     scale: '0,2,4,7,9', // ngũ cung trưởng, nửa cung — hết thang thì lên quãng tám
     noteStep: 1, // mỗi dự án nhảy bao nhiêu bậc của thang (2 = cách một nốt)
     descend: false, // true = lướt xuống danh sách thì giai điệu đi XUỐNG
@@ -77,10 +108,25 @@
   var tre = null
   var hoi = null
   var uot = null
-  var TEN = ['note', 'henshin']
-  var tho = {} // ArrayBuffer tải sẵn, giải mã khi đã có AudioContext
-  var buf = {}
+  var tho = {} // theo đường dẫn: ArrayBuffer tải sẵn, giải mã khi đã có AudioContext
+  var buf = {} // theo đường dẫn: AudioBuffer đã giải mã
+  var dangTai = {}
+
+  // Nhạc cụ của preset đang chọn; tên lạ (vd. preset cũ còn nhớ trong bảng)
+  // thì về droid.
+  function nhacCu() {
+    var p = S[S.preset + 'Src'] ? S.preset : 'droid'
+    return { src: S[p + 'Src'], hz: S[p + 'Hz'] || 1, goc: S[p + 'Root'] || 1 }
+  }
+  function bufNot() {
+    return buf[nhacCu().src]
+  }
+  // Những file cần lúc này: nhạc cụ đang chọn + đuôi chuỗi kích hoạt.
+  function canTai() {
+    return [nhacCu().src, S.henshinSrc].filter(Boolean)
+  }
   var lanTruoc = 0
+  var daBoot = false
   var thang = [0]
 
   function docThang() {
@@ -89,26 +135,27 @@
   }
 
   // Tải file lúc rảnh sau `load` — không chặn trang, chưa cần AudioContext.
+  // Đổi preset thì apDung() gọi lại — chỉ tải file chưa có.
   function taiTruoc() {
-    TEN.forEach(function (k) {
-      var u = S[k + 'Src']
-      if (!u) return
+    canTai().forEach(function (u) {
+      if (dangTai[u]) return
+      dangTai[u] = true
       fetch(u)
         .then(function (r) { return r.ok ? r.arrayBuffer() : null })
         .then(function (a) {
           if (!a) return
-          tho[k] = a
-          if (ctx) giaiMa(k)
+          tho[u] = a
+          if (ctx) giaiMa(u)
         })
-        .catch(function () {})
+        .catch(function () { dangTai[u] = false })
     })
   }
 
-  function giaiMa(k) {
-    var a = tho[k]
-    if (!a || buf[k]) return
-    tho[k] = null // decodeAudioData chiếm luôn ArrayBuffer
-    ctx.decodeAudioData(a, function (b) { buf[k] = b }, function () {})
+  function giaiMa(u) {
+    var a = tho[u]
+    if (!a || buf[u]) return
+    tho[u] = null // decodeAudioData chiếm luôn ArrayBuffer
+    ctx.decodeAudioData(a, function (b) { buf[u] = b }, function () {})
   }
 
   function moKhoa() {
@@ -130,7 +177,7 @@
       tre.connect(uot)
       uot.connect(ctx.destination)
       apDung()
-      TEN.forEach(giaiMa)
+      Object.keys(tho).forEach(giaiMa)
     }
     if (ctx.state === 'suspended') ctx.resume()
   }
@@ -153,18 +200,19 @@
     src.start(luc || 0)
   }
 
-  // Phát nốt thứ `bac` của thang (0 = rootHz); vượt thang thì lên quãng tám.
+  // Phát nốt thứ `bac` của thang (0 = nốt gốc của preset); vượt thang thì lên quãng tám.
   function phat(bac) {
-    if (!bat || !ctx || ctx.state !== 'running' || !buf.note) return
+    if (!bat || !ctx || ctx.state !== 'running' || !bufNot()) return
     var now = performance.now()
     if (now - lanTruoc < S.minGapMs) return
     lanTruoc = now
-    choi(buf.note, tiLe(bac), S.volume, 0, true)
+    choi(bufNot(), tiLe(bac), S.volume, 0, true)
   }
 
   // playbackRate cho bậc `bac` của thang, đã tính độ trầm bổng.
   function tiLe(bac) {
-    return (S.rootHz / S.noteHz) * Math.pow(2, (nuaCung(bac) + S.transpose) / 12)
+    var nc = nhacCu()
+    return (nc.goc / nc.hz) * Math.pow(2, (nuaCung(bac) + S.transpose) / 12)
   }
 
   function nuaCung(bac) {
@@ -179,19 +227,20 @@
     var t = ctx.currentTime + 0.02
     var nhip = S.henshinGapMs / 1000
     var not = String(S.henshinNotes || '').split(',').filter(function (x) { return x.trim() !== '' })
-    if (buf.note) {
+    if (bufNot()) {
       not.forEach(function (b, i) {
         // phím Enter (cuối) nghỉ thêm nửa nhịp
         var luc = t + i * nhip + (i === not.length - 1 ? nhip * 0.5 : 0)
-        choi(buf.note, tiLe(+b), S.volume, luc, true)
+        choi(bufNot(), tiLe(+b), S.volume, luc, true)
       })
     }
-    if (buf.henshin) choi(buf.henshin, 1, S.henshinVolume, t + (not.length ? (not.length + 0.5) * nhip : 0))
+    if (buf[S.henshinSrc]) choi(buf[S.henshinSrc], 1, S.henshinVolume, t + (not.length ? (not.length + 0.5) * nhip : 0))
   }
 
   // Áp các khoá không tự ăn mỗi lần phát (thang, bộ lọc, vang).
   function apDung() {
     docThang()
+    if (daBoot) taiTruoc() // đổi preset: tải nhạc cụ mới (file đã có thì bỏ qua)
     if (!ctx) return
     var t = ctx.currentTime
     loc.frequency.setTargetAtTime(Math.max(200, S.brightness), t, 0.02)
@@ -203,12 +252,12 @@
   // Nghe thử: chạy một lượt 10 dự án từ trên xuống như đang lướt chuột.
   function ngheThu() {
     moKhoa()
-    if (!ctx || ctx.state !== 'running' || !buf.note) return
+    if (!ctx || ctx.state !== 'running' || !bufNot()) return
     var t = ctx.currentTime + 0.03
     var step = Math.max(1, S.noteStep | 0)
     for (var i = 0; i < 10; i++) {
       var bac = (S.descend ? 9 - i : i) * step
-      choi(buf.note, tiLe(bac), S.volume, t + i * 0.11, true)
+      choi(bufNot(), tiLe(bac), S.volume, t + i * 0.11, true)
     }
   }
 
@@ -240,7 +289,7 @@
       moKhoa()
       // Tiếng kích hoạt để biết đã bật. Lần bấm đầu AudioContext vừa dựng nên
       // file chưa giải mã xong — đợi một nhịp.
-      setTimeout(phatHenshin, buf.henshin ? 0 : 200)
+      setTimeout(phatHenshin, buf[S.henshinSrc] ? 0 : 200)
     }
   }
 
@@ -282,8 +331,12 @@
       phat(i * Math.max(1, S.noteStep | 0))
     })
 
-    if (document.readyState === 'complete') setTimeout(taiTruoc, 300)
-    else window.addEventListener('load', function () { setTimeout(taiTruoc, 300) }, { once: true })
+    function batDauTai() {
+      daBoot = true
+      taiTruoc()
+    }
+    if (document.readyState === 'complete') setTimeout(batDauTai, 300)
+    else window.addEventListener('load', function () { setTimeout(batDauTai, 300) }, { once: true })
 
     Object.assign(api, { phat: phat, apDung: apDung, rungThu: ngheThu, henshinThu: phatHenshin, bat: datBat, dangBat: function () { return bat } })
   }
