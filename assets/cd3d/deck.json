@@ -43,9 +43,9 @@
       "height": 0.166,
       "hud": {
         "show": true,
-        "nowPlaying": "TOTAL: 11:31",
+        "nowPlaying": "TOTAL: 3:27",
         "time": "3:14",
-        "album": "ALBUM: MCK",
+        "album": "ALBUM: KAIXA",
         "track": "01",
         "padding": 0.05,
         "fontSize": 0.1,
@@ -230,8 +230,8 @@
   "current": 0,
   "assets": {
     "disc": "assets/cd3d/img/disc.webp",
-    "graphic": "assets/cd3d/img/graphic.jpg",
-    "tag": "assets/cd3d/img/tag.jpg",
+    "graphic": "assets/cd3d/tracks/04-triumph-of-light-banner.jpg",
+    "tag": "assets/cd3d/tracks/04-triumph-of-light-banner.jpg",
     "power": "assets/cd3d/img/power.png",
     "surface": {
       "shell": "assets/cd3d/img/shell.jpg",
