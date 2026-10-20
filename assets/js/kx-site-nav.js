@@ -74,6 +74,59 @@
     return out
   }
 
+  /* Ô nav đổi NỀN theo section nằm dưới nó (người dùng: "màu nav khi sang
+   * section 2 trùng với màu section 2"). Các ô nav tô sẵn nền trang #040203 —
+   * trên tấm xám của cụm 01 (#141414) chúng thành khối đen nổi lên. Hiệu ứng
+   * nào có nền riêng thì khai vùng vào `window.KX_NAV_NEN` (mảng hàm trả về
+   * [đỉnh, đáy, màu] theo px TRANG — tự đo thưa); nav chỉ so vị trí cuộn với
+   * các vùng đó, không đo layout lúc cuộn. Ra khỏi mọi vùng → nền gốc. */
+  function nenTheoVung(nav) {
+    var o = []
+    for (var c = nav.firstElementChild; c; c = c.nextElementSibling) {
+      if (getComputedStyle(c).backgroundColor === 'rgb(4, 2, 3)') o.push(c)
+    }
+    if (!o.length) return
+    o.forEach(function (c) { c.style.transition = 'background-color .35s ease' })
+    var giua = 0 // tâm dọc của nav trên màn (đo thưa)
+    function doNav() {
+      var b = nav.getBoundingClientRect()
+      giua = b.top + b.height / 2
+    }
+    var cu = null
+    function capNhat() {
+      var vung = window.KX_NAV_NEN || []
+      var y = scrollY + giua
+      // Vùng chồng nhau thì lấy vùng bắt đầu SAU CÙNG — section sau đè lên
+      // section trước (tấm cụm 01 kéo dài xuống dưới section CD). Màu '' = nền gốc.
+      var mau = ''
+      var tu = -Infinity
+      for (var i = 0; i < vung.length; i++) {
+        var v = vung[i]()
+        if (v && y >= v[0] && y < v[1] && v[0] > tu) {
+          tu = v[0]
+          mau = v[2]
+        }
+      }
+      if (mau === cu) return
+      cu = mau
+      for (var j = 0; j < o.length; j++) o[j].style.backgroundColor = mau
+    }
+    doNav()
+    capNhat()
+    addEventListener('scroll', capNhat, { passive: true })
+    addEventListener('kx-cuon', capNhat)
+    addEventListener('resize', function () {
+      doNav()
+      cu = null
+      capNhat()
+    })
+    addEventListener('load', function () {
+      doNav()
+      cu = null
+      capNhat()
+    })
+  }
+
   function setupNav(page) {
     var nav = $('1:463')
     if (!nav) return
@@ -86,6 +139,7 @@
     if (CONFIG.navFixed) {
       nav.classList.add('kx-nav-fixed')
       nav.style.bottom = 'calc(' + CONFIG.navBottom + ' * var(--px))'
+      nenTheoVung(nav)
     }
     link($('1:464'), 'home.html', 'Home')
     // Ô vuông thứ hai (1:476) vốn là ô thư, nay là nút bật/tắt sound — do

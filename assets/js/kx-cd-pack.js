@@ -72,11 +72,11 @@
     // trên (KX_RISE.config.mauNen) cho liền một mảng (người dùng: "màu bg bên
     // dưới trùng màu section trên"); không có kx-rise thì #141414.
     vaoNen: '',
-    voDen: 6, // cường độ đèn spot (0 = tắt)
-    voMoiTruong: 0.2, // ánh sáng môi trường trên giấy vỏ — thấp để vùng sáng loang của spot đọc ra
-    voPhanXa: 0.78, // độ sáng nền của giấy (× màu) — đèn chính song song rọi ĐỀU, hạ nền thì spot mới tạo được chênh
+    voDen: 0.7, // cường độ đèn spot (0 = tắt)
+    voMoiTruong: 0.27, // ánh sáng môi trường trên giấy vỏ — thấp để vùng sáng loang của spot đọc ra
+    voPhanXa: 0.71, // độ sáng nền của giấy (× màu) — đèn chính song song rọi ĐỀU, hạ nền thì spot mới tạo được chênh
     voNham: 0.48, // độ nhám giấy vỏ (thấp = bóng hơn)
-    voVan: 0.5, // độ nổi vân giấy (0 = phẳng)
+    voVan: 0.95, // độ nổi vân giấy (0 = phẳng)
     // px thiết kế — khoảng cách camera khi mặt có đĩa lật ra. MỘT phối cảnh
     // chung đặt trên cả pack, tâm nhìn ở bản lề (người dùng: "mở phải đúng không
     // gian 3D chứ"); ngắn hơn bề rộng mặt (1920) là mặt phình méo tràn khung.
@@ -194,6 +194,12 @@
 
     // ---------------------------------------------------------- đo thưa
     var top0 = 0 // đỉnh khúc, px trang
+    // Vùng của khúc cho ô nav (kx-site-nav.js): màu '' = nền gốc — dưới nav
+    // lúc này là vỏ đĩa / hộp chứ không phải nền sân khấu; khai để tấm cụm 01
+    // (kéo dài xuống dưới khúc) không nhuộm nav ở đoạn chồng nhau.
+    ;(window.KX_NAV_NEN = window.KX_NAV_NEN || []).push(function () {
+      return H > 1 ? [top0, top0 + H, ''] : null
+    })
     var H = 1 // chiều cao khúc, px
     var W = 1 // bề rộng trang, px
     var V = 1 // chiều cao màn (sân khấu), px

@@ -88,6 +88,11 @@
     var k = 1 // px màn mỗi px thiết kế (đo thưa)
     var rongTrang = 1 // bề rộng trang, px (đo thưa)
     var gocCu = NaN
+    var vungTu = 0 // vùng của tấm (px trang) — ô nav đổi nền theo (kx-site-nav.js)
+    var vungDen = 0
+    ;(window.KX_NAV_NEN = window.KX_NAV_NEN || []).push(function () {
+      return S.bat && vungDen > vungTu ? [vungTu, vungDen, S.mauNen] : null
+    })
 
     function lamKhoi() {
       traVe()
@@ -169,6 +174,8 @@
         if (d > day) day = d
       }
       day += S.duoiThem * k
+      vungTu = pr.top + scrollY + heroH
+      vungDen = pr.top + scrollY + day
       var W = pr.width
       rongTrang = W
       var phai = S.kieu === 'canhPhai'
