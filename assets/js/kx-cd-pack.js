@@ -68,6 +68,10 @@
     vaoTruotX: 160, // px thiết kế, lệch ngang lúc đầu (về 0 cùng nhịp góc)
     vaoCong: 3, // lớn = giữ nghiêng lâu, về thẳng dồn ở cuối
     vaoTamX: 0.5, // tâm xoay theo bề ngang, ở mép TRÊN sân khấu
+    // Nền lộ ra sau mép nghiêng — TRỐNG = lấy đúng màu tấm của cụm 01 phía
+    // trên (KX_RISE.config.mauNen) cho liền một mảng (người dùng: "màu bg bên
+    // dưới trùng màu section trên"); không có kx-rise thì #141414.
+    vaoNen: '',
     voDen: 6, // cường độ đèn spot (0 = tắt)
     voMoiTruong: 0.2, // ánh sáng môi trường trên giấy vỏ — thấp để vùng sáng loang của spot đọc ra
     voPhanXa: 0.78, // độ sáng nền của giấy (× màu) — đèn chính song song rọi ĐỀU, hạ nền thì spot mới tạo được chênh
@@ -237,6 +241,12 @@
       // khấu xuống bấy nhiêu để lúc mép khúc mới chạm đáy màn chưa thấy góc nào.
       var canh = huong > 0 ? S.vaoTamX : 1 - S.vaoTamX
       var dy = canh * W * Math.abs(Math.sin((g * Math.PI) / 180)) + 2 * con
+      var rise = window.KX_RISE && window.KX_RISE.config
+      var nen = S.vaoNen || (rise && rise.bat && rise.mauNen) || '#141414'
+      khuc.style.background = nen
+      // Tấm cụm 01 dừng hụt đỉnh khúc ~2 px (làm tròn toạ độ) — phủ khe bằng
+      // dải cùng màu kéo lên trên, không thì thành đường kẻ đen mảnh.
+      khuc.style.boxShadow = '0 -6px 0 0 ' + nen
       san.style.transformOrigin = (S.vaoTamX * W).toFixed(1) + 'px 0px'
       san.style.transform = 'translate(' + tx.toFixed(2) + 'px,' + dy.toFixed(2) + 'px) rotate(' + g.toFixed(3) + 'deg)'
       // Lúc nghiêng sân khấu đè lên cụm 01 (lớp bọc của kx-rise.js ở z 5).
