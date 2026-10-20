@@ -59,6 +59,15 @@
     // vào"): giấy nhám tuyệt đối + đèn song song = mặt phẳng sáng đều như ảnh
     // dán. Đèn spot mềm chếch trên-trái cho vùng sáng loang, giấy hơi bóng bắt
     // vệt sáng môi trường, vân giấy mịn.
+    // VÀO NGHIÊNG (người dùng: "cái này cũng xuất hiện kiểu nghiêng như section
+    // trên nhưng hướng ngược lại"): sân khấu trồi lên NGHIÊNG rồi xoay về
+    // thẳng khi chạm đỉnh màn — cùng công thức với kx-rise.js của cụm 01.
+    // Cụm 01 là 'canhPhai' nên ở đây 'canhTrai' (bên trái cao, thấy cạnh trái).
+    vaoKieu: 'canhTrai', // 'canhTrai' / 'canhPhai' / 'khong'
+    vaoGoc: 9, // độ lúc mới trồi
+    vaoTruotX: 160, // px thiết kế, lệch ngang lúc đầu (về 0 cùng nhịp góc)
+    vaoCong: 3, // lớn = giữ nghiêng lâu, về thẳng dồn ở cuối
+    vaoTamX: 0.5, // tâm xoay theo bề ngang, ở mép TRÊN sân khấu
     voDen: 6, // cường độ đèn spot (0 = tắt)
     voMoiTruong: 0.2, // ánh sáng môi trường trên giấy vỏ — thấp để vùng sáng loang của spot đọc ra
     voPhanXa: 0.78, // độ sáng nền của giấy (× màu) — đèn chính song song rọi ĐỀU, hạ nền thì spot mới tạo được chênh
@@ -206,7 +215,36 @@
     var moCu = ''
     var matCu = ''
     var diaCu = ''
+    // Sân khấu trồi lên nghiêng: p = phần khúc đã vào màn (0 = mép trên khúc
+    // ở đáy màn, 1 = chạm đỉnh). Không đo layout — top0 đo thưa.
+    var vaoCu = NaN
+    function vaoNghieng() {
+      var huong = S.vaoKieu === 'canhPhai' ? -1 : S.vaoKieu === 'canhTrai' ? 1 : 0
+      var top = top0 - scrollY
+      var p = 1 - top / Math.max(1, V)
+      p = p < 0 ? 0 : p > 1 ? 1 : p
+      var con = huong ? 1 - Math.pow(p, Math.max(0.2, S.vaoCong)) : 0
+      var g = S.vaoGoc * con * huong
+      if (Math.abs(g - vaoCu) <= 0.005) return
+      vaoCu = g
+      if (con < 0.0005) {
+        san.style.transform = ''
+        khuc.style.zIndex = ''
+        return
+      }
+      var tx = S.vaoTruotX * k * con * huong
+      // Đầu bị nhấc lên của mép trên nhô cao (tâm → góc) × sin|góc| — đẩy sân
+      // khấu xuống bấy nhiêu để lúc mép khúc mới chạm đáy màn chưa thấy góc nào.
+      var canh = huong > 0 ? S.vaoTamX : 1 - S.vaoTamX
+      var dy = canh * W * Math.abs(Math.sin((g * Math.PI) / 180)) + 2 * con
+      san.style.transformOrigin = (S.vaoTamX * W).toFixed(1) + 'px 0px'
+      san.style.transform = 'translate(' + tx.toFixed(2) + 'px,' + dy.toFixed(2) + 'px) rotate(' + g.toFixed(3) + 'deg)'
+      // Lúc nghiêng sân khấu đè lên cụm 01 (lớp bọc của kx-rise.js ở z 5).
+      khuc.style.zIndex = '6'
+    }
+
     function ve() {
+      vaoNghieng()
       if (ba) return ve3D()
       var s = scrollY - top0
       var chay = H - V // quãng sân khấu dính
@@ -750,6 +788,7 @@
       if (img.getAttribute('src') !== S.anhAlbum) img.src = S.anhAlbum
       if (imgDia.getAttribute('src') !== S.anhDia) imgDia.src = S.anhDia
       voCu = moCu = matCu = diaCu = ''
+      vaoCu = NaN
       if (denVo) denVo.intensity = S.voDen
       for (var i = 0; i < vlVo.length; i++) {
         vlVo[i].roughness = S.voNham
