@@ -244,7 +244,19 @@
     }
 
     function tachHet() {
-      doan.forEach(tach)
+      // Chữ nằm trong lớp xoay của kx-rise.js (`data-kx-bien`): tách dòng ở tư
+      // thế THẲNG — đang nghiêng thì các từ cùng dòng có đỉnh khác nhau.
+      var bien = document.querySelectorAll('[data-kx-bien]')
+      var cu = []
+      for (var i = 0; i < bien.length; i++) {
+        cu.push(bien[i].style.transform)
+        bien[i].style.transform = 'none'
+      }
+      try {
+        doan.forEach(tach)
+      } finally {
+        for (var j = 0; j < bien.length; j++) bien[j].style.transform = cu[j]
+      }
     }
     function batDau() {
       gom()

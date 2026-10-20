@@ -2,6 +2,12 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8">
+  <!-- Địa chỉ gốc của site LUÔN là Home (người dùng: "sao vào web lại ra trang
+       contact đầu tiên"). Đã vào trong phiên này mà mở lại index.html trần
+       (không ?trang=contact, không ?ve=, không phải refresh) → sang Home ngay,
+       trước khi trang contact kịp hiện. Lượt đầu của phiên: màn loading chạy
+       rồi tự sang Home (kx-loading.js). -->
+  <script>try{var kxQ=new URLSearchParams(location.search),kxN=performance.getEntriesByType('navigation')[0];if(sessionStorage.getItem('kx-da-vao')==='1'&&kxQ.get('trang')!=='contact'&&!kxQ.get('ve')&&!(kxN&&kxN.type==='reload'))location.replace('home.html'+location.hash)}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>(Hello, Mate) — kaixa</title>
   <meta name="description" content="Trang liên hệ có trình phát nhạc: nhập file từ máy, spectrum chạy theo nhạc, hai đĩa xoay.">
@@ -34,6 +40,8 @@
   <script src="assets/js/kx-tail-cursor.js"></script>
   <!-- Con trỏ tàu alien (cả site) — tàu bay trên, đuôi ruy-băng kéo theo sau. -->
   <script src="assets/js/kx-cursor.js"></script>
+  <!-- Lưới chấm xám sáng lên theo chuột, để lại vệt mờ dần. -->
+  <script src="assets/js/kx-dot-cursor.js"></script>
   <!-- Xáo kí tự cho chữ Geist Mono lúc trang vừa hiện. -->
   <script src="assets/js/kx-shuffle-text.js"></script>
   <!-- Thanh khối quét ngang để lộ chữ PP Editorial, ảnh poster và ô PLAY/MUTE. -->

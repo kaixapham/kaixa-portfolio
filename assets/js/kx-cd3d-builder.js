@@ -72,7 +72,7 @@
     '.kx-cdb{position:fixed;right:16px;top:16px;z-index:9999;width:282px;',
     '  background:#0b0b0c;border:1px solid #2a2a2c;border-radius:8px;padding:12px;',
     '  font-family:"Geist Mono",ui-monospace,monospace;font-size:11px;color:#e8e8e8;',
-    '  box-shadow:0 10px 40px rgba(0,0,0,.6);user-select:none;max-height:94vh;overflow:auto}',
+    '  box-shadow:0 10px 40px rgba(0,0,0,.6);user-select:none;max-height:94vh;overflow:auto;overscroll-behavior:contain}',
     '.kx-cdb[hidden]{display:none}',
     '.kx-cdb h4{margin:0 0 2px;font-size:11px;font-weight:500;letter-spacing:.02em;text-transform:uppercase}',
     '.kx-cdb .kx-cdb__hint{margin:0 0 9px;color:#6f6f73;font-size:10px;line-height:1.45}',
@@ -1490,6 +1490,8 @@
     if (nho || bang || !CONFIG.enabled) return
     ganCss()
     nho = el('div', 'kx-cdb')
+    // Cuộn riêng: thiếu dấu này thì kx-smooth-scroll.js chặn lăn chuột và cuộn cả trang.
+    nho.setAttribute('data-kx-cuon-rieng', '')
     nho.hidden = !CONFIG.moSan
     nho.appendChild(el('h4', null, 'CD 3D'))
     nho.appendChild(el('p', 'kx-cdb__hint', 'Máy CD 3D đang tắt — trang đang hiện ảnh phẳng của Figma. Bật lên để chỉnh tư thế theo cuộn. K để đóng.'))
@@ -1515,6 +1517,9 @@
     ganCss()
 
     bang = el('div', 'kx-cdb')
+    // Cuộn riêng: thiếu dấu này thì kx-smooth-scroll.js chặn lăn chuột và cuộn
+    // cả trang (máy đổi tư thế theo cuộn — trông như bảng hỏng).
+    bang.setAttribute('data-kx-cuon-rieng', '')
     bang.hidden = !CONFIG.moSan
     bang.appendChild(el('h4', null, 'CD 3D — tư thế theo cuộn'))
     bang.appendChild(

@@ -20,7 +20,9 @@
  * về một điểm thì xoá canvas một lần rồi ngủ, không tốn khung nào nữa.
  *
  * CÁCH DÙNG: nhúng thẻ script là chạy. Chỉnh bằng CONFIG ngay bên dưới. File
- * này KHÔNG chứa UI setting — bảng tinh chỉnh ở kx-devtools.js (tab "Đuôi trỏ").
+ * này KHÔNG chứa UI setting — bảng tinh chỉnh ở kx-devtools.js (tab "Đuôi trỏ",
+ * trang contact) và kx-panel.js (mục Tail Cursor, bốn trang Figma). Nạp ở cả 5
+ * trang — người dùng: "cho cái cursor đang có ở loading vào các trang luôn".
  * ========================================================================== */
 (() => {
   'use strict'
@@ -48,6 +50,10 @@
 
     // -------------------------------------------------------------- đầu trỏ
     dot: 5, // bán kính chấm ở đầu; 0 = không vẽ
+    // Đầu ruy-băng (chấm) gắn vào ĐUÔI con tàu của kx-cursor.js khi tàu đang
+    // hiện (người dùng: "đầu dot của ruy băng sẽ ở phần đuôi của custom
+    // cursor"). Tàu ẩn / tắt thì về bám con trỏ như cũ. false = luôn bám con trỏ.
+    bamDuoi: true,
     hideNative: false, // true = giấu con trỏ thật của hệ điều hành
 
     // ---------------------------------------------------------------- khác
@@ -89,6 +95,13 @@
 
   const pts = [] // [{x, y}] — pts[0] là đầu
   const pointer = { x: 0, y: 0, has: false }
+  const duoiTau = { x: 0, y: 0 } // cấp sẵn — kx-cursor.js ghi vào mỗi khung
+  // Đích của đầu ruy-băng: đuôi tàu nếu có, không thì con trỏ.
+  function dich() {
+    const c = S.bamDuoi && window.KX_CURSOR
+    if (c && c.duoi && c.duoi(duoiTau)) return duoiTau
+    return pointer
+  }
   let raf = 0
   let last = 0
   let clock = 0
@@ -104,14 +117,16 @@
     while (pts.length < n) pts.push({ ...pts[pts.length - 1] })
     while (pts.length > n) pts.pop()
 
-    // đầu chạy về con trỏ
-    const e = clamp(S.ease, 0.01, 1)
-    pts[0].x += (pointer.x - pts[0].x) * e
-    pts[0].y += (pointer.y - pts[0].y) * e
+    // đầu chạy về con trỏ — gắn ĐUÔI tàu thì dính chặt (không trễ), không
+    // thì chấm lơ lửng sau tàu
+    const t = dich()
+    const e = t === duoiTau ? 1 : clamp(S.ease, 0.01, 1)
+    pts[0].x += (t.x - pts[0].x) * e
+    pts[0].y += (t.y - pts[0].y) * e
 
     // mỗi đốt sau bám đốt trước — xích kéo
     const c = clamp(S.chain, 0.01, 1)
-    let moved = Math.hypot(pointer.x - pts[0].x, pointer.y - pts[0].y)
+    let moved = Math.hypot(t.x - pts[0].x, t.y - pts[0].y)
     for (let i = 1; i < pts.length; i++) {
       const p = pts[i]
       const q = pts[i - 1]
@@ -225,7 +240,8 @@
       pointer.y = ev.clientY
       if (!pointer.has) {
         pointer.has = true
-        reset(ev.clientX, ev.clientY)
+        const t = dich()
+        reset(t.x, t.y)
       }
       wake()
     },
@@ -272,4 +288,6 @@
       wake()
     },
   }
+  // Bảng H (kx-panel.js) ở bốn trang Figma gọi apDung() sau mỗi lần chỉnh.
+  window.KX_TAIL_CURSOR.apDung = window.KX_TAIL_CURSOR.restyle
 })()

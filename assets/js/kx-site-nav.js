@@ -34,7 +34,9 @@
     { key: 'works', href: 'works.html', label: 'WORKS' },
     { key: 'detail', href: 'work-detail.html', label: 'LUMEN' },
     { key: 'about', href: 'about.html', label: 'ABOUT' },
-    { key: 'contact', href: 'index.html', label: 'CONTACT' },
+    // `?trang=contact`: index.html KHÔNG có tham số luôn đưa về Home (địa chỉ
+    // gốc của site) — chỉ link này mới ở lại trang contact.
+    { key: 'contact', href: 'index.html?trang=contact', label: 'CONTACT' },
   ]
 
   var CSS = [

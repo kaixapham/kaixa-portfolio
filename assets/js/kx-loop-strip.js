@@ -180,6 +180,13 @@
       var m = ds[i]
       var H = m.den - m.tu
       if (y >= m.den) {
+        // Khúc CHÈN (generator: `chen`, cao `svh` svh + `px` px thiết kế,
+        // chiều cao thiết kế 0) — vd. section vỏ đĩa / pack của kx-cd-pack.js.
+        if (m.chen) {
+          svh += m.svh || 0
+          qua -= m.px || 0
+          continue
+        }
         svh += 100
         qua += H
         continue

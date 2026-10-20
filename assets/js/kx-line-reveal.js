@@ -97,13 +97,27 @@
       var lop = document.createElement('div')
       lop.className = 'kx-lr'
       lop.setAttribute('aria-hidden', 'true')
+      // kx-rise.js dịch đoạn chữ khi nó trồi lên — lớp thanh đi cùng nhờ nhãn này.
+      if (p.dataset.n) lop.dataset.kxTheo = p.dataset.n
       page.appendChild(lop)
+      dispatchEvent(new Event('kx-lr-dung'))
       var thanh = []
       var dangChay = false
       var daChay = false
 
-      // Hộp từng dòng của chữ, toạ độ trong .kx-page.
+      // Hộp từng dòng của chữ, toạ độ trong .kx-page. Đoạn chữ nằm trong lớp
+      // xoay của kx-rise.js (`data-kx-bien`) thì tạm gỡ góc xoay lúc đo.
       function doDong() {
+        var bien = p.closest('[data-kx-bien]')
+        var tfCu = bien ? bien.style.transform : ''
+        if (bien) bien.style.transform = 'none'
+        try {
+          return doDongThang()
+        } finally {
+          if (bien) bien.style.transform = tfCu
+        }
+      }
+      function doDongThang() {
         var tn = null
         var w = document.createTreeWalker(p, NodeFilter.SHOW_TEXT)
         for (var n = w.nextNode(); n; n = w.nextNode()) {
@@ -120,6 +134,9 @@
         r.setStart(tn, dau)
         r.setEnd(tn, cuoi)
         var pr = page.getBoundingClientRect()
+        // Đoạn chữ có thể đang bị kx-rise.js dịch (`translate`) — đo ở chỗ
+        // TỰ NHIÊN, lớp thanh được dịch cùng đoạn chữ.
+        var tl = p.style.translate ? parseFloat(String(p.style.translate).split(' ')[1] || 0) || 0 : 0
         // Gộp các mảnh cùng một dòng (cùng tâm dọc) thành một hộp.
         var ds = []
         ;[].slice.call(r.getClientRects()).forEach(function (q) {
@@ -142,10 +159,10 @@
         // chữ hoa nhiều, thanh dòng đầu lấn lên và đè đường kẻ ngăn phía trên
         // (người dùng: "wave effect đang bị cắt vào đường line"). Hộp đoạn văn
         // đã được text-box-trim cắt đúng mép chữ hoa.
-        var dinh = p.getBoundingClientRect().top - pr.top - S.lanTren
+        var dinh = p.getBoundingClientRect().top - pr.top - S.lanTren - tl
         return ds.map(function (d) {
-          var y = Math.max(d.t - pr.top - dem, dinh)
-          var day = d.b - pr.top + dem
+          var y = Math.max(d.t - pr.top - dem - tl, dinh)
+          var day = d.b - pr.top + dem - tl
           return { x: d.l - pr.left - dem, y: y, w: d.r - d.l + 2 * dem, h: day - y }
         })
       }

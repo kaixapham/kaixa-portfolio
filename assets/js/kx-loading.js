@@ -37,10 +37,9 @@
     // Màn loading là CỬA VÀO của cả site, nên hết màn thì sang Home chứ không
     // dừng lại ở contact. Để TRỐNG là ở lại contact như trước.
     goTo: 'home.html',
-    // CHỈ nhảy ở lần vào đầu tiên của mỗi phiên trình duyệt. Thiếu cờ này là
-    // sập bẫy: nav có mục `[5] CONTACT` trỏ về chính index.html, mà index.html
-    // lại luôn nhảy sang Home — thành ra không bao giờ vào được trang contact.
-    // Lần sau quay lại thì bỏ hẳn màn loading, vào thẳng contact.
+    // Màn loading CHỈ chạy ở lần vào đầu tiên của mỗi phiên trình duyệt (và
+    // khi refresh); lượt sau địa chỉ gốc vào thẳng Home. Trang contact chỉ ở
+    // lại khi URL có `?trang=contact` (mục `[5] CONTACT` của nav).
     goToOnce: true,
 
     // ------------------------------------------------------------- nhịp chạy
@@ -473,10 +472,17 @@ html[data-kx-ld='on'] :is(${S.hide}){visibility:hidden}
    * `ve` chỉ nhận các trang của site (không cho chuyển hướng tuỳ ý). */
   const VE_DUOC = ['home.html', 'works.html', 'work-detail.html', 'about.html']
   let ve = ''
+  /* `?trang=contact` = người xem CHỦ ĐÍCH vào trang contact (mục CONTACT của
+   * nav). Không có nó thì index.html là địa chỉ gốc của site → luôn sang Home
+   * (người dùng: "sao vào web lại ra trang contact đầu tiên"). Bản trước chỉ
+   * sang Home ở lượt ĐẦU của phiên, lượt sau ở lại contact — gõ lại địa chỉ
+   * site trong cùng tab là rơi vào contact. Đây từng là lỗi thật. */
+  let laContact = false
   let laTaiLai = false
   try {
     const v = new URLSearchParams(location.search).get('ve') || ''
     if (VE_DUOC.indexOf(v) !== -1) ve = v
+    laContact = new URLSearchParams(location.search).get('trang') === 'contact'
   } catch (e) {}
   try {
     const n = performance.getEntriesByType('navigation')[0]
@@ -486,8 +492,7 @@ html[data-kx-ld='on'] :is(${S.hide}){visibility:hidden}
   /* Loading xong thì đi đâu — trả về '' nghĩa là ở lại trang này. */
   function diDau() {
     if (ve) return ve
-    if (!S.goTo) return ''
-    if (S.goToOnce && !laLanDau) return ''
+    if (laContact || !S.goTo) return ''
     return S.goTo
   }
 
@@ -562,7 +567,14 @@ html[data-kx-ld='on'] :is(${S.hide}){visibility:hidden}
     // `kx-loading-done`, vì kx-burning-open.js chờ đúng sự kiện đó mới chạy;
     // không phát thì màn mở đầu của trang contact vĩnh viễn không bao giờ chạy.
     laLanDau = !daVao()
-    if (S.goTo && S.goToOnce && !laLanDau && !laTaiLai && !ve) {
+    if (S.goToOnce && !laLanDau && !laTaiLai && !ve) {
+      // Lượt quay lại, không refresh: địa chỉ gốc → sang Home luôn (đoạn
+      // script đầu <head> của index.html thường đã làm trước); vào contact
+      // từ nav → ở lại, bỏ màn loading.
+      if (!laContact && S.goTo) {
+        location.replace(S.goTo + location.hash)
+        return
+      }
       document.documentElement.removeAttribute('data-kx-ld')
       window.dispatchEvent(new CustomEvent('kx-loading-done'))
       return

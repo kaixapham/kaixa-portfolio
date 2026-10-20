@@ -35,7 +35,7 @@
     // Bật/tắt LÚC ĐANG CHẠY (người dùng chốt "cursor có cơ chế tắt bật"):
     // false = giấu tàu, trả con trỏ hệ thống; bật lại là hiện ngay, không cần
     // tải lại trang. Công tắc ở mục Cursor của bảng H.
-    hien: false,
+    hien: true,
     kieu: 'jet', // alien | ufo | jet | claw | crystal | squid | rocket | mecha | mercury | probe | beetle
     // 'file|mũiX|mũiY|sángX|sángY' — đường dẫn TƯƠNG ĐỐI (luật số 5)
     alien: 'assets/img/cursor/alien.webp|0.023|0.029|0.84|0.85',
@@ -56,6 +56,12 @@
     downScale: 0.86, // lúc nhấn chuột
     glow: true, // động cơ sáng nhấp nháy
     glowMs: 1100, // một nhịp sáng-tối
+    // ĐUÔI tàu — chỗ đuôi ruy-băng của kx-tail-cursor.js bám vào (người dùng:
+    // "đầu dot của ruy băng sẽ ở phần đuôi của custom cursor"). Tự tìm từ ảnh:
+    // cụm điểm đặc xa mũi nhất dọc trục mũi → thân. `duoiLui` đẩy thêm ra sau
+    // (px CSS, âm = lùi vào thân).
+    duoiLui: 0,
+    scaleEase: 0.25, // 0..1 mỗi khung 60fps — phóng / thu khi rê nút, nhấn chuột
     // Thứ được coi là "bấm được"
     hoverSel: 'a,button,[role="button"],[role="link"],[data-kx-link],input,select,label,summary',
     // Vùng dùng con trỏ HỆ THỐNG: bảng H, nút mở bảng, bảng CD (K), devtools contact.
@@ -80,7 +86,9 @@
       '.kx-cur-ship{position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;',
       '  will-change:transform;opacity:0;transition:opacity .15s}',
       '.kx-cur-ship.is-on{opacity:1}',
-      '.kx-cur-ship__inner{position:absolute;inset:0;transition:transform .18s cubic-bezier(.22,1,.36,1)}',
+      // KHÔNG transition: góc và tỉ lệ làm mượt bằng JS để duoi() tính đúng chỗ
+      // đang VẼ — transition CSS làm hình trễ hơn số, chấm đuôi trượt khỏi tàu.
+      '.kx-cur-ship__inner{position:absolute;inset:0}',
       '.kx-cur-ship__img{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none}',
       '.kx-cur-ship__glow{position:absolute;width:60%;height:60%;margin:-30% 0 0 -30%;border-radius:50%;',
       '  background:radial-gradient(circle,rgba(235,245,255,.95) 0,rgba(200,225,255,.45) 30%,rgba(200,225,255,0) 70%);',
@@ -106,6 +114,54 @@
     document.body.appendChild(tau)
 
     var hot = [0, 0]
+    var duoiF = [0.85, 0.85] // điểm đuôi (phần khung ảnh), tìm lại mỗi lần ảnh nạp
+    function timDuoi() {
+      // Quét điểm đặc của ảnh tàu: trục = mũi → trọng tâm; đuôi = trung bình các
+      // điểm có hình chiếu lên trục nằm trong 4% cuối. Một lần mỗi ảnh.
+      try {
+        var w = img.naturalWidth
+        var h = img.naturalHeight
+        if (!w || !h) return
+        var c = document.createElement('canvas')
+        c.width = w
+        c.height = h
+        var g = c.getContext('2d', { willReadFrequently: true })
+        g.drawImage(img, 0, 0)
+        var d = g.getImageData(0, 0, w, h).data
+        var nx = hot[0] * w
+        var ny = hot[1] * h
+        var sx = 0
+        var sy = 0
+        var n = 0
+        var i, xx, yy
+        for (yy = 0; yy < h; yy++) for (xx = 0; xx < w; xx++) if (d[(yy * w + xx) * 4 + 3] > 110) { sx += xx; sy += yy; n++ }
+        if (!n) return
+        var ux = sx / n - nx
+        var uy = sy / n - ny
+        var ul = Math.sqrt(ux * ux + uy * uy) || 1
+        ux /= ul
+        uy /= ul
+        var max = -1e9
+        for (yy = 0; yy < h; yy++) for (xx = 0; xx < w; xx++) {
+          if (d[(yy * w + xx) * 4 + 3] <= 110) continue
+          var pr = (xx - nx) * ux + (yy - ny) * uy
+          if (pr > max) max = pr
+        }
+        var nguong = max - 0.04 * Math.max(w, h)
+        var tx = 0
+        var ty = 0
+        var m = 0
+        for (yy = 0; yy < h; yy++) for (xx = 0; xx < w; xx++) {
+          i = (yy * w + xx) * 4 + 3
+          if (d[i] <= 110) continue
+          if ((xx - nx) * ux + (yy - ny) * uy >= nguong) { tx += xx; ty += yy; m++ }
+        }
+        if (m) {
+          duoiF[0] = (tx / m + 0.5) / w
+          duoiF[1] = (ty / m + 0.5) / h
+        }
+      } catch (e) {}
+    }
     var x = -100
     var y = -100
     function apDung() {
@@ -132,8 +188,15 @@
       document.documentElement.classList.toggle('kx-cur', bat)
       tau.style.display = S.hien ? '' : 'none'
     }
-    img.addEventListener('load', function () { anhXong = true; datHien() }, { once: true })
-    if (img.complete && img.naturalWidth) anhXong = true
+    img.addEventListener('load', function () {
+      anhXong = true
+      timDuoi() // đổi kiểu tàu là nạp ảnh mới → tìm lại đuôi
+      datHien()
+    })
+    if (img.complete && img.naturalWidth) {
+      anhXong = true
+      timDuoi()
+    }
     datHien()
 
     var xTruoc = -100
@@ -142,10 +205,13 @@
     var raf = 0
     var tren = false // đang trên thứ bấm được
     var nhan = false
+    var tl = 1 // tỉ lệ đang vẽ (đuổi theo tlDich)
+    function tlDich() {
+      return nhan ? S.downScale : tren ? S.hoverScale : 1
+    }
 
     function veTrong() {
-      var k = (nhan ? S.downScale : tren ? S.hoverScale : 1)
-      trong.style.transform = 'rotate(' + goc.toFixed(2) + 'deg) scale(' + k + ')'
+      trong.style.transform = 'rotate(' + goc.toFixed(2) + 'deg) scale(' + tl.toFixed(4) + ')'
     }
 
     var last = 0
@@ -159,8 +225,11 @@
       // Nghiêng theo vận tốc ngang, rồi tự tắt dần về 0.
       dich += (0 - dich) * (1 - Math.pow(1 - 0.12, f))
       goc += (dich - goc) * (1 - Math.pow(1 - S.tiltEase, f))
+      var td = tlDich()
+      tl += (td - tl) * (1 - Math.pow(1 - S.scaleEase, f))
+      if (Math.abs(td - tl) < 0.001) tl = td
       veTrong()
-      if (Math.abs(goc) > 0.05 || Math.abs(dich) > 0.05) raf = requestAnimationFrame(khung)
+      if (Math.abs(goc) > 0.05 || Math.abs(dich) > 0.05 || tl !== td) raf = requestAnimationFrame(khung)
     }
     function chay() {
       if (!raf) {
@@ -192,11 +261,11 @@
       var t = e.target && e.target.closest ? e.target.closest(S.hoverSel) : null
       if (!!t !== tren) {
         tren = !!t
-        veTrong()
+        chay()
       }
     })
-    document.addEventListener('pointerdown', function () { nhan = true; veTrong() })
-    document.addEventListener('pointerup', function () { nhan = false; veTrong() })
+    document.addEventListener('pointerdown', function () { nhan = true; chay() })
+    document.addEventListener('pointerup', function () { nhan = false; chay() })
     // Chuột ra khỏi cửa sổ thì giấu tàu, vào lại thì hiện ở chỗ mới.
     document.addEventListener('mouseout', function (e) {
       if (!e.relatedTarget) tau.classList.remove('is-on')
@@ -204,6 +273,25 @@
     window.addEventListener('blur', function () { tau.classList.remove('is-on') })
 
     Object.assign(api, {
+      /* Toạ độ ĐUÔI tàu trên màn (px CSS) ghi vào `o` — không cấp phát, gọi
+       * được mỗi khung. Trả false khi tàu không hiện (tắt, chưa nạp ảnh, chuột
+       * ra ngoài, đang trong bảng setting) — nơi gọi tự quay về con trỏ. */
+      duoi: function (o) {
+        if (!S.hien || !anhXong || !tau.classList.contains('is-on') || trongBang) return false
+        var lx = (duoiF[0] - hot[0]) * S.size
+        var ly = (duoiF[1] - hot[1]) * S.size
+        var ll = Math.sqrt(lx * lx + ly * ly)
+        if (ll > 0 && S.duoiLui) {
+          lx += (lx / ll) * S.duoiLui
+          ly += (ly / ll) * S.duoiLui
+        }
+        var a = (goc * Math.PI) / 180
+        var ca = Math.cos(a) * tl
+        var sa = Math.sin(a) * tl
+        o.x = x + lx * ca - ly * sa
+        o.y = y + lx * sa + ly * ca
+        return true
+      },
       apDung: function () {
         apDung()
         datHien()

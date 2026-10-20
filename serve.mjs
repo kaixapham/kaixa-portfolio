@@ -2,7 +2,7 @@
 // Sets the MIME types the page needs (avif, ktx2, wasm, riv, woff2).
 import { createServer } from 'node:http'
 import { createReadStream, statSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
-import { spawn } from 'node:child_process'
+import { spawn, execFileSync } from 'node:child_process'
 import { connect } from 'node:net'
 import { basename, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -84,6 +84,7 @@ function patchKey(src, key, value) {
 // TÊN MIỀN KHÁC không gọi được (header lạ = phải hỏi preflight, mà server này
 // không trả lời preflight).
 const EDITOR_PATH = '/__kx-editor'
+const HOP_CD_PATH = '/__kx-hop-cd'
 const EDITOR_DIR = 'tools/cd-visualizer'
 const EDITOR_PORT = 3114
 // Vite trên macOS nghe `localhost` = CHỈ IPv6 ::1 — gõ 127.0.0.1 là tưởng
@@ -158,6 +159,56 @@ createServer((req, res) => {
       // tên miền, mà bản công khai chạy dưới thư mục con
       // (kaixapham.github.io/kaixa-portfolio/) nên ảnh 404 sạch. Đây từng là lỗi thật.
       reply(200, { ok: true, path: UPLOAD_DIR + '/' + name, bytes: size })
+    })
+    return
+  }
+
+  // Editor hộp CD (tools/cd-case/) ghi cấu hình xuống assets/cd3d/hop-cd.json.
+  // Chỉ đúng một file, JSON hợp lệ, ≤ 200 KB — Home đọc lại file này.
+  if (req.method === 'POST' && req.url.split('?')[0] === HOP_CD_PATH) {
+    let body = ''
+    req.on('data', (c) => {
+      body += c
+      if (body.length > 2e5) req.destroy()
+    })
+    req.on('end', () => {
+      let data
+      try {
+        data = JSON.parse(body)
+        if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('không phải object')
+      } catch (e) {
+        return reply(400, { ok: false, error: 'JSON hỏng' })
+      }
+      // Ảnh tải lên qua editor là PNG gốc (mặt đĩa từng 24 MB, 4320×5400) —
+      // đưa thẳng lên site là tải nặng và GPU gánh cả trăm MB. Ảnh > 400 KB
+      // tự có bản WebP cạnh dài 2048 cạnh nó, JSON trỏ sang bản đó.
+      for (const k of ['anhBia', 'anhLung', 'anhDia', 'anhDan']) {
+        const v = data[k]
+        if (typeof v !== 'string' || !/^assets\/media\/[\w.-]+\.(png|jpe?g)$/i.test(v)) continue
+        const src = join(ROOT, v)
+        try {
+          if (!existsSync(src) || statSync(src).size <= 4e5) continue
+          const out = v.replace(/\.(png|jpe?g)$/i, '.webp')
+          if (!existsSync(join(ROOT, out))) {
+            const kq = execFileSync('sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', src]).toString()
+            const w = +(kq.match(/pixelWidth: (\d+)/) || [])[1]
+            const h = +(kq.match(/pixelHeight: (\d+)/) || [])[1]
+            const co = Math.max(w, h) <= 2048 ? [] : ['-resize', ...(w >= h ? ['2048', '0'] : ['0', '2048'])]
+            execFileSync('cwebp', ['-quiet', '-q', '82', ...co, src, '-o', join(ROOT, out)])
+          }
+          data[k] = out
+        } catch (e) {
+          console.warn('hop-cd: không làm được bản WebP cho', v, e.message)
+        }
+      }
+      const rel = 'assets/cd3d/hop-cd.json'
+      try {
+        mkdirSync(join(ROOT, 'assets/cd3d'), { recursive: true })
+        writeFileSync(join(ROOT, rel), JSON.stringify(data, null, 2) + '\n')
+      } catch (e) {
+        return reply(500, { ok: false, error: 'không ghi được: ' + e.message })
+      }
+      reply(200, { ok: true, file: rel })
     })
     return
   }
