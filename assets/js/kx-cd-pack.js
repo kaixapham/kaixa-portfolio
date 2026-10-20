@@ -38,7 +38,7 @@
 
   var CONFIG = {
     enabled: true,
-    nen: '#101010', // nền sân khấu (khung storyboard)
+    nen: '#000000', // nền sân khấu (khung storyboard)
     mauVo: '#d5d5d5', // vỏ đĩa
     mauTrong: '#939393', // mặt bên trong của pack
     mauDia: '#525252', // mặt có đĩa
