@@ -94,6 +94,13 @@
     studio3D: 'toi',
     gocMoSan: 180, // độ — hộp mở PHẲNG hẳn (người dùng: "mở ra hết cỡ để phẳng")
     maxDpr: 1.5,
+    // HIỆU NĂNG (người dùng: "tối ưu chỗ cụm cd 3D đi, t xem lag lắm"): lúc
+    // phóng kín màn, nhựa trong suốt bắt vẽ cả cảnh HAI lượt (lượt khúc xạ +
+    // lượt chính) ở cỡ canvas — màn 2000 px × dpr 1.5 là ~6–7 triệu điểm ảnh
+    // mỗi lượt. Trần điểm ảnh của canvas (hạ dpr khi màn to) và lượt khúc xạ
+    // vẽ ở độ phân giải thấp hơn (ảnh nhìn xuyên nhựa vốn đã mềm).
+    maxPx: 2.2e6, // điểm ảnh thật tối đa của canvas 3D
+    khucXaRes: 0.6, // độ phân giải lượt khúc xạ (× canvas)
   }
 
   var S = CONFIG
@@ -261,7 +268,7 @@
 
     function ve() {
       vaoNghieng()
-      if (ba) return ve3D()
+      if (ba && ba.sanSang) return ve3D()
       var s = scrollY - top0
       var chay = H - V // quãng sân khấu dính
       if (s < 0) s = 0
@@ -434,8 +441,11 @@
             ghi.style.cssText = 'position:absolute;right:calc(24 * var(--px));bottom:calc(24 * var(--px));z-index:2;font:500 calc(10 * var(--px))/1 "Geist Mono",monospace;letter-spacing:-0.04em;color:#4d4d4d;text-decoration:none'
             san.appendChild(ghi)
           }
-          var renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: 'high-performance' })
-          renderer.setPixelRatio(Math.min(devicePixelRatio || 1, S.maxDpr))
+          var renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, stencil: false, powerPreference: 'high-performance' })
+          renderer.transmissionResolutionScale = S.khucXaRes
+          // Canvas giấu tới khi model + ảnh + vỏ xong (sanSang) — trong lúc chờ
+          // vẫn hiện bản phẳng có vỏ, không để trống hộp chưa ảnh, chưa vỏ.
+          cv.style.visibility = 'hidden'
           renderer.outputColorSpace = THREE.SRGBColorSpace
           renderer.toneMapping = THREE.ACESFilmicToneMapping
           renderer.toneMappingExposure = cfg.phoiSang != null ? cfg.phoiSang : 1
@@ -461,19 +471,27 @@
             GLTFLoader: kq[1].GLTFLoader,
             onDoi: function () {
               doHop()
+              if (ba) ba.cho.mau = true
+              dungVoBoc() // vỏ đo theo hộp ĐÓNG — model phải xong rồi mới dựng
+              sanSang()
               veLai()
             },
           })
           goc.add(hop.nhom)
           hop.apDung({}).then(function () {
+            if (ba) ba.cho.anh = true
+            sanSang()
             veLai()
           })
-          ba = { THREE: THREE, renderer: renderer, scene: scene, cam: cam, goc: goc, hop: hop, P: P, cv: cv, dong: null, mo: null, u: 1, W: 0, V: 0, e: new THREE.Euler(), v: new THREE.Vector3(), voBoc: null }
-          vo.style.display = 'none'
-          mo.style.display = 'none'
+          ba = { THREE: THREE, renderer: renderer, scene: scene, cam: cam, goc: goc, hop: hop, P: P, cv: cv, dong: null, mo: null, u: 1, W: 0, V: 0, e: new THREE.Euler(), v: new THREE.Vector3(), voBoc: null, cho: { mau: cfg.kieu !== 'model', anh: false, vo: false }, sanSang: false }
+          // Lưới an toàn: quá 10 s mà còn thiếu thứ gì thì vẫn chuyển sang 3D.
+          setTimeout(function () {
+            if (ba) ba.cho = { mau: true, anh: true, vo: true }
+            sanSang()
+          }, 10000)
           coKhung3D()
           doHop()
-          dungVoBoc()
+          if (ba.cho.mau) dungVoBoc()
           veLai()
         })
         .catch(function (e) {
@@ -485,7 +503,8 @@
      * khỏi miệng trên. Mặt trước vẽ đúng thiết kế khung 01 (nền xám, thẻ poster
      * album, chữ Druk / Phudu) lên canvas; cùng cỡ mặt với hộp đóng. */
     function dungVoBoc() {
-      if (!ba || !ba.dong || ba.voBoc) return
+      if (!ba || !ba.dong || ba.voBoc || ba.dangVo) return
+      ba.dangVo = true
       var T = ba.THREE
       var anh = new Image()
       anh.decoding = 'async'
@@ -597,6 +616,8 @@
         m.userData.yG = yG
         ba.scene.add(m)
         ba.voBoc = m
+        ba.cho.vo = true
+        sanSang()
         veLai()
       })
     }
@@ -623,10 +644,41 @@
       ba.mo = hop1()
       ba.hop.trangThai(giu)
     }
+    // Đủ model + ảnh + vỏ thì mới đổi từ bản phẳng sang 3D (người dùng: "m làm
+    // mất phần vỏ CD r à" — bản cũ giấu bản phẳng ngay lúc cảnh 3D vừa khởi
+    // động, mà vỏ phải chờ font Druk + ảnh poster, nên mấy giây đầu chỉ còn
+    // hộp chưa ảnh, không có vỏ).
+    function sanSang() {
+      if (!ba || ba.sanSang) return
+      var c = ba.cho
+      if (!(c.mau && c.anh && c.vo)) return
+      ba.sanSang = true
+      // Biên dịch shader TRƯỚC (song song, lúc rảnh) rồi mới đổi sang 3D: lần
+      // vẽ đầu của nhựa khúc xạ / giấy vỏ biên dịch shader mất vài trăm ms —
+      // rơi đúng lúc người xem đang cuộn là một cú giật.
+      var hien3D = function () {
+        // Vẽ nháp một lượt lúc canvas còn ẩn: lần vẽ đầu còn tải texture lên
+        // GPU (ảnh 2048, vỏ, normal map) + tạo bộ đệm khúc xạ (~270 ms đo
+        // được) — trả giá lúc rảnh chứ không phải khung đầu tiên người xem cuộn.
+        try { ba.renderer.render(ba.scene, ba.cam) } catch (e) {}
+        requestAnimationFrame(function () {
+          vo.style.display = 'none'
+          mo.style.display = 'none'
+          ba.cv.style.visibility = ''
+          veLai()
+        })
+      }
+      var r = ba.renderer
+      if (r.compileAsync) r.compileAsync(ba.scene, ba.cam).then(hien3D, hien3D)
+      else hien3D()
+    }
     function coKhung3D() {
       if (!ba) return
       ba.W = W
       ba.V = V
+      // Trần điểm ảnh: màn to tự hạ dpr (≥ 1) để canvas không vượt maxPx.
+      var dpr = Math.min(devicePixelRatio || 1, S.maxDpr, Math.max(1, Math.sqrt(S.maxPx / Math.max(1, W * V))))
+      if (Math.abs(ba.renderer.getPixelRatio() - dpr) > 0.01) ba.renderer.setPixelRatio(dpr)
       ba.renderer.setSize(W, V, false)
       ba.cam.aspect = W / Math.max(1, V)
       ba.cam.updateProjectionMatrix()
@@ -673,6 +725,10 @@
       var moNap = 0
       var neo = 0 // 0 = neo tâm hộp đóng, 1 = neo tâm cặp mặt đang mở
       var voHet = false // vỏ đã tụt khỏi màn — giấu hẳn
+      // Hộp còn nằm GỌN trong vỏ (lướt vỏ, thu vỏ về giữa) thì giấu hẳn: nhựa
+      // trong suốt bắt vẽ thêm cả cảnh một lượt khúc xạ — mà lúc này vỏ to kín
+      // màn. Đo trên Chrome M1 Pro: 4.6 ms/khung → 0.2 ms.
+      var trongVo = true
       var con = s
       if (con <= d1 && d1 > 0) {
         rong = W
@@ -700,6 +756,7 @@
            * (người dùng: "không có đoạn CD đã trồi lên còn hạ xuống"). */
           var hVo = (dong.h / dong.w) * A // cao hộp trên màn
           var troi = pha === 1 ? e : 1
+          trongVo = troi < 0.002
           var tach = pha === 2 ? e : pha > 2 ? 1 : 0
           pyVo = V / 2 + hVo * S.voLo * troi
           pyVo = lerp(pyVo, V + hVo * 0.6 + 40 * k, tach) // ra khỏi đáy màn
@@ -723,6 +780,7 @@
         }
       }
       var sc = (rong * u) / dong.w
+      ba.hop.nhom.visible = !(trongVo && ba.voBoc)
       ba.hop.trangThai({ mo: moNap, diaNhac: 0, diaXoay: S.xoayDia ? s * S.xoayDia : 0 })
       var g = ba.goc
       ba.e.set(0, 0, (roll * Math.PI) / 180, 'XYZ')
@@ -768,6 +826,15 @@
         { rootMargin: '150% 0px' }
       )
       io3.observe(khuc)
+      // Tải sớm lúc trang rảnh sau `load` — đợi tới gần section mới tải là
+      // người xem cuộn tới đúng lúc model / ảnh / font còn đang về.
+      var som = function () {
+        var chay = function () { if (!ba && !dangDung3D) bat3D() }
+        if (window.requestIdleCallback) requestIdleCallback(chay, { timeout: 4000 })
+        else setTimeout(chay, 1500)
+      }
+      if (document.readyState === 'complete') som()
+      else addEventListener('load', som, { once: true })
     }
 
     var raf = 0
@@ -795,6 +862,7 @@
     addEventListener('load', lamLai)
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(lamLai)
 
+    api.canh = function () { return ba } // gỡ rối / đo hiệu năng
     api.apDung = function () {
       san.style.background = S.nen
       vo.style.background = S.mauVo

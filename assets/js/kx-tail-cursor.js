@@ -73,10 +73,14 @@
   let H = 0
   let dpr = 1
 
+  /* Ngủ (đuôi co hết, chuột đứng yên) thì GIẤU canvas: lớp phủ kín màn mang
+   * mix-blend-mode vẫn bắt trình duyệt hoà trộn lại cả màn mỗi khung khi thứ
+   * bên dưới đổi (cuộn, cảnh 3D) — kể cả khi trong suốt. Xem kx-dot-cursor.js. */
+  let ngu = true
   function style() {
     cvs.style.cssText =
       'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;' +
-      'z-index:' + S.zIndex + ';mix-blend-mode:' + S.blend + ';'
+      'z-index:' + S.zIndex + ';mix-blend-mode:' + S.blend + ';visibility:' + (ngu ? 'hidden' : 'visible') + ';'
     document.documentElement.style.cursor = S.hideNative ? 'none' : ''
   }
 
@@ -209,6 +213,8 @@
     if (!S.enabled || !pointer.has) {
       g.clearRect(0, 0, innerWidth, innerHeight)
       raf = 0
+      ngu = true
+      cvs.style.visibility = 'hidden'
       return
     }
 
@@ -220,12 +226,18 @@
     if (moved < S.minStep) {
       g.clearRect(0, 0, innerWidth, innerHeight)
       raf = 0
+      ngu = true
+      cvs.style.visibility = 'hidden'
       return
     }
     raf = requestAnimationFrame(tick)
   }
 
   function wake() {
+    if (ngu && S.enabled) {
+      ngu = false
+      cvs.style.visibility = 'visible'
+    }
     if (raf || !S.enabled) return
     last = 0
     raf = requestAnimationFrame(tick)

@@ -85,10 +85,17 @@
     cv.setAttribute('aria-hidden', 'true')
     var ctx = cv.getContext('2d')
     document.body.appendChild(cv)
+    /* Nghỉ (hết chấm, chuột đứng yên) thì GIẤU canvas: lớp phủ kín màn mang
+     * mix-blend-mode vẫn bắt trình duyệt hoà trộn lại cả màn mỗi khung khi thứ
+     * bên dưới đổi (cuộn, cảnh 3D) — kể cả khi nó trong suốt hoàn toàn. Đo trên
+     * Chrome màn Retina: cùng lớp ruy-băng, chiếm phần lớn số khung chậm lúc
+     * cuộn qua section CD (người dùng: "xem bằng chrome là lag"). */
+    var nghi = true
     function datLop() {
       cv.style.cssText =
         'position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;' +
-        'z-index:' + S.zIndex + ';mix-blend-mode:' + S.blend + ';display:' + (S.bat ? 'block' : 'none')
+        'z-index:' + S.zIndex + ';mix-blend-mode:' + S.blend + ';display:' + (S.bat ? 'block' : 'none') +
+        ';visibility:' + (nghi ? 'hidden' : 'visible')
     }
     datLop()
 
@@ -322,7 +329,11 @@
       }
       ctx.globalAlpha = 1
 
-      if (!con && !coSong && !dangDi && nen <= 0) return // nghỉ hẳn
+      if (!con && !coSong && !dangDi && nen <= 0) {
+        nghi = true // nghỉ hẳn — giấu lớp hoà trộn
+        cv.style.visibility = 'hidden'
+        return
+      }
       dangDi = false
       raf = requestAnimationFrame(khung)
     }
@@ -357,6 +368,10 @@
     }
 
     function chay() {
+      if (nghi) {
+        nghi = false
+        cv.style.visibility = 'visible'
+      }
       if (raf) return
       last = performance.now()
       raf = requestAnimationFrame(khung)
